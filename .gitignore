@@ -1,0 +1,22 @@
+# Secrets and local environment
+.env
+.venv/
+.streamlit/secrets.toml
+
+# Generated data (fixtures in data/fixtures/ ARE committed)
+data/*.db
+data/*.db-journal
+data/*.db-wal
+data/*.db-shm
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# macOS / Office
+.DS_Store
+~$*

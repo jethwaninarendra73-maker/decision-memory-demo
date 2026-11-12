@@ -1,0 +1,14 @@
+[
+  {"from_id": "DEC-002", "to_id": "DEC-001", "relation_type": "SUPERSEDES", "note": "Rolled the German surcharge back from 6% to 2%."},
+  {"from_id": "DEC-011", "to_id": "DEC-002", "relation_type": "SUPERSEDES", "note": "Raised the German surcharge from 2% to 3%."},
+  {"from_id": "DEC-006", "to_id": "DEC-003", "relation_type": "CONTRADICTS", "note": "Skipped the pilot phase that the Benelux playbook recommended."},
+  {"from_id": "DEC-008", "to_id": "DEC-004", "relation_type": "CONTRADICTS", "note": "Held price where France raised it."},
+  {"from_id": "DEC-007", "to_id": "DEC-004", "relation_type": "SIMILAR_TO", "note": "Same 5% rate, without billing readiness."},
+  {"from_id": "DEC-009", "to_id": "DEC-004", "relation_type": "SIMILAR_TO", "note": "Same 5% rate, with two weeks' notice instead of six."},
+  {"from_id": "DEC-014", "to_id": "DEC-004", "relation_type": "SIMILAR_TO", "note": "Copied the France approach without a local pilot."},
+  {"from_id": "DEC-016", "to_id": "DEC-004", "relation_type": "SIMILAR_TO", "note": "Extends the France 5% surcharge to a new segment."},
+  {"from_id": "DEC-010", "to_id": "DEC-001", "relation_type": "INFORMED_BY", "note": "Germany 2023 exceeded planned churn loss."},
+  {"from_id": "DEC-010", "to_id": "DEC-006", "relation_type": "INFORMED_BY", "note": "Iberia 2024 exceeded planned churn loss."},
+  {"from_id": "DEC-012", "to_id": "DEC-001", "relation_type": "INFORMED_BY", "note": "Disputes traced back to charging contract customers mid-term."},
+  {"from_id": "DEC-015", "to_id": "DEC-001", "relation_type": "INFORMED_BY", "note": "Protects the kind of accounts lost in 2023."}
+]

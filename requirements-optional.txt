@@ -1,0 +1,2 @@
+# Optional, Stage 12 only. The app and tests must run without these.
+anthropic

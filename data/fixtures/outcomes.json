@@ -1,0 +1,153 @@
+[
+  {
+    "id": "OUT-001", "decision_id": "DEC-001", "verdict": "failed", "observed_on": "2023-05-29",
+    "expected_revenue_change_musd": 4.8, "actual_revenue_change_musd": -1.1,
+    "expected_churn_loss_fraction": 0.008, "actual_churn_loss_fraction": 0.034,
+    "sla_status": "not_modeled",
+    "explanation": "Contract customers disputed the surcharge and a competitor that held its rates took volume. Rolled back after one quarter.",
+    "evidence": [
+      {"source_id": "SRC-002", "excerpt": "Churn-related revenue loss for the quarter is tracking at 3.4% of baseline against a plan of 0.8%."},
+      {"source_id": "SRC-003", "excerpt": "Net quarterly revenue change was -$1.1M versus a +$4.8M plan."},
+      {"source_id": "SRC-003", "excerpt": "The 6% surcharge triggered a competitive response in Germany: a regional competitor held rates and targeted our contract accounts."}
+    ]
+  },
+  {
+    "id": "OUT-002", "decision_id": "DEC-002", "verdict": "partial", "observed_on": "2023-12-31",
+    "expected_revenue_change_musd": 1.2, "actual_revenue_change_musd": 0.9,
+    "expected_churn_loss_fraction": 0.005, "actual_churn_loss_fraction": 0.007,
+    "sla_status": "not_modeled",
+    "explanation": "The rollback stopped the losses but delivered less than planned.",
+    "evidence": [
+      {"source_id": "SRC-015", "excerpt": "After the 2023 rollback to 2%, Germany delivered +$0.9M a quarter against a +$1.2M plan, with churn loss at 0.7% of baseline."}
+    ]
+  },
+  {
+    "id": "OUT-003", "decision_id": "DEC-003", "verdict": "success", "observed_on": "2023-12-12",
+    "expected_revenue_change_musd": 1.5, "actual_revenue_change_musd": 1.6,
+    "expected_churn_loss_fraction": 0.006, "actual_churn_loss_fraction": 0.004,
+    "sla_status": "met",
+    "explanation": "The pilot beat plan on revenue and churn; its playbook was recommended for other markets.",
+    "evidence": [
+      {"source_id": "SRC-005", "excerpt": "The Benelux pilot delivered +$1.6M a quarter against a +$1.5M plan."},
+      {"source_id": "SRC-005", "excerpt": "Churn loss was 0.4% of baseline against a 0.6% plan. No SLA impact."}
+    ]
+  },
+  {
+    "id": "OUT-004", "decision_id": "DEC-004", "verdict": "success", "observed_on": "2024-04-09",
+    "expected_revenue_change_musd": 3.2, "actual_revenue_change_musd": 3.0,
+    "expected_churn_loss_fraction": 0.010, "actual_churn_loss_fraction": 0.009,
+    "sla_status": "met",
+    "explanation": "Close to plan. Contract exemption, six weeks' notice and weekly KPI checks were credited.",
+    "evidence": [
+      {"source_id": "SRC-007", "excerpt": "France delivered +$3.0M a quarter against a +$3.2M plan."},
+      {"source_id": "SRC-007", "excerpt": "Churn loss was 0.9% of baseline against a 1.0% plan. SLA compliance unchanged."},
+      {"source_id": "SRC-007", "excerpt": "Contract customers were exempt, notice was six weeks, and weekly KPI checks caught two billing errors early."}
+    ]
+  },
+  {
+    "id": "OUT-005", "decision_id": "DEC-005", "verdict": "success", "observed_on": "2024-06-28",
+    "expected_revenue_change_musd": 2.0, "actual_revenue_change_musd": 2.1,
+    "expected_churn_loss_fraction": 0.008, "actual_churn_loss_fraction": 0.007,
+    "sla_status": "met",
+    "explanation": "Both phases completed slightly ahead of plan.",
+    "evidence": [
+      {"source_id": "SRC-008", "excerpt": "Result after both phases: +$2.1M a quarter, churn loss 0.7% of baseline, no SLA impact."}
+    ]
+  },
+  {
+    "id": "OUT-006", "decision_id": "DEC-006", "verdict": "failed", "observed_on": "2024-08-20",
+    "expected_revenue_change_musd": 2.6, "actual_revenue_change_musd": 0.4,
+    "expected_churn_loss_fraction": 0.012, "actual_churn_loss_fraction": 0.023,
+    "sla_status": "not_modeled",
+    "explanation": "A 7% step without a pilot was too large for a price-sensitive base; churn was nearly double plan.",
+    "evidence": [
+      {"source_id": "SRC-010", "excerpt": "Iberia delivered +$0.4M a quarter against a +$2.6M plan."},
+      {"source_id": "SRC-010", "excerpt": "Churn loss reached 2.3% of baseline against a 1.2% plan, concentrated in SME spot customers."},
+      {"source_id": "SRC-010", "excerpt": "A 7% step without a pilot was too large for a price-sensitive base."}
+    ]
+  },
+  {
+    "id": "OUT-007", "decision_id": "DEC-007", "verdict": "partial", "observed_on": "2024-09-17",
+    "expected_revenue_change_musd": 2.4, "actual_revenue_change_musd": 1.5,
+    "expected_churn_loss_fraction": 0.010, "actual_churn_loss_fraction": 0.011,
+    "sla_status": "breached",
+    "explanation": "Revenue held up, but wrong invoices led to credit notes and breached invoice-dispute SLAs.",
+    "evidence": [
+      {"source_id": "SRC-011", "excerpt": "Quarter closed at +$1.5M with churn loss of 1.1% of baseline."},
+      {"source_id": "SRC-011", "excerpt": "Credit notes are being issued and invoice-dispute SLAs have been breached."}
+    ]
+  },
+  {
+    "id": "OUT-008", "decision_id": "DEC-008", "verdict": "partial", "observed_on": "2025-01-14",
+    "expected_revenue_change_musd": 0.0, "actual_revenue_change_musd": 0.6,
+    "expected_churn_loss_fraction": null, "actual_churn_loss_fraction": null,
+    "sla_status": "not_modeled",
+    "explanation": "Holding price won volume and some revenue, but contribution margin fell.",
+    "evidence": [
+      {"source_id": "SRC-012", "excerpt": "Volume rose 4% and revenue rose $0.6M a quarter, but contribution margin fell because the added volume was low-yield."}
+    ]
+  },
+  {
+    "id": "OUT-009", "decision_id": "DEC-009", "verdict": "partial", "observed_on": "2025-02-24",
+    "expected_revenue_change_musd": 2.8, "actual_revenue_change_musd": 1.9,
+    "expected_churn_loss_fraction": 0.010, "actual_churn_loss_fraction": 0.015,
+    "sla_status": "at_risk",
+    "explanation": "Customers objected to the two-week notice more than the rate; complaints tripled.",
+    "evidence": [
+      {"source_id": "SRC-013", "excerpt": "Quarter closed at +$1.9M with churn loss of 1.5% of baseline."},
+      {"source_id": "SRC-013", "excerpt": "Complaint volume tripled and response-time SLAs are at risk."}
+    ]
+  },
+  {
+    "id": "OUT-010", "decision_id": "DEC-010", "verdict": "success", "observed_on": "2025-07-15",
+    "expected_revenue_change_musd": null, "actual_revenue_change_musd": null,
+    "expected_churn_loss_fraction": null, "actual_churn_loss_fraction": null,
+    "sla_status": "not_modeled",
+    "explanation": "The guardrail has been applied to every European surcharge since adoption without a breach.",
+    "evidence": [
+      {"source_id": "SRC-016", "excerpt": "The 1.2% churn guardrail has been applied to every European surcharge since February 2025; none has breached it."}
+    ]
+  },
+  {
+    "id": "OUT-011", "decision_id": "DEC-011", "verdict": "success", "observed_on": "2025-07-15",
+    "expected_revenue_change_musd": 2.2, "actual_revenue_change_musd": 2.3,
+    "expected_churn_loss_fraction": 0.006, "actual_churn_loss_fraction": 0.005,
+    "sla_status": "not_modeled",
+    "explanation": "Slightly ahead of plan with no competitive response at the 3% level.",
+    "evidence": [
+      {"source_id": "SRC-016", "excerpt": "Germany delivered +$2.3M a quarter against a +$2.2M plan, with churn loss of 0.5% of baseline."},
+      {"source_id": "SRC-016", "excerpt": "No competitive response was observed at the 3% level."}
+    ]
+  },
+  {
+    "id": "OUT-012", "decision_id": "DEC-012", "verdict": "success", "observed_on": "2025-07-15",
+    "expected_revenue_change_musd": null, "actual_revenue_change_musd": null,
+    "expected_churn_loss_fraction": null, "actual_churn_loss_fraction": null,
+    "sla_status": "not_modeled",
+    "explanation": "No contract customer disputes since the exclusion policy.",
+    "evidence": [
+      {"source_id": "SRC-016", "excerpt": "Since the June exclusion policy, no contract customer has disputed a surcharge in any European market."}
+    ]
+  },
+  {
+    "id": "OUT-013", "decision_id": "DEC-013", "verdict": "success", "observed_on": "2024-07-23",
+    "expected_revenue_change_musd": 5.0, "actual_revenue_change_musd": 5.4,
+    "expected_churn_loss_fraction": 0.010, "actual_churn_loss_fraction": 0.006,
+    "sla_status": "not_modeled",
+    "explanation": "Ahead of plan, in a market where index-linked surcharges are standard and competitors moved together.",
+    "evidence": [
+      {"source_id": "SRC-017", "excerpt": "US Midwest delivered +$5.4M a quarter against a +$5.0M plan, with churn loss of 0.6% of baseline against a 1.0% plan."}
+    ]
+  },
+  {
+    "id": "OUT-014", "decision_id": "DEC-014", "verdict": "failed", "observed_on": "2025-01-20",
+    "expected_revenue_change_musd": 1.8, "actual_revenue_change_musd": -0.3,
+    "expected_churn_loss_fraction": 0.010, "actual_churn_loss_fraction": 0.028,
+    "sla_status": "not_modeled",
+    "explanation": "Two large forwarders switched carriers within six weeks; the surcharge was withdrawn.",
+    "evidence": [
+      {"source_id": "SRC-018", "excerpt": "Surcharge withdrawn. Quarter closed at -$0.3M with churn loss of 2.8% of baseline."},
+      {"source_id": "SRC-018", "excerpt": "Two large forwarders switched carriers within six weeks."}
+    ]
+  }
+]

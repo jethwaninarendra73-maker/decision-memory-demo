@@ -1,0 +1,6 @@
+# Core stack. Everything here must work offline once installed.
+streamlit>=1.40
+pydantic>=2.7
+networkx>=3.2
+plotly>=5.20
+pytest>=8.0
