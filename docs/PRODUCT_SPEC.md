@@ -31,7 +31,7 @@ Implemented in `src/decision_memory/models.py` (Stage 02). Every stored record h
 | `Outcome` | `OUT-` | decision_id, verdict (`success` · `partial` · `failed`), observed_on, expected vs actual revenue change, expected vs actual churn loss fraction, sla_status, explanation, source_refs[] |
 | `Proposal` | `PRO-` | question, region, target_segments[], effective_quarter (`2027-Q1`), surcharge_options[], exclusions[], status, requested_by_role, decision_id |
 | `ScenarioResult` | `SCN-` | proposal_id, surcharge_rate, assumptions (baseline revenue, exempt share, churn loss fraction, contribution margin, implementation cost), gross_uplift, churn_loss, revenue_change, margin_change, formula_trace |
-| `Recommendation` | `REC-` | proposal_id, decision_type (`phased_pilot` · `proceed` · `do_not_proceed` · `insufficient_evidence`), recommended_rate, reasons[] with source_refs, excluded_options[], risk_level, assumptions[], uncertainty, action_plan[], approval_required_by |
+| `Recommendation` | `REC-` | proposal_id, decision_type (`phased_pilot` · `proceed` · `do_not_proceed` · `insufficient_evidence`), recommended_rate, reasons[] (each `source_supported` with source_refs, or labelled `assumed_for_demo`), excluded_options[], risk_level, assumptions[], uncertainty, action_plan[], approval_required_by |
 | `Approval` | `APR-` | recommendation_id, approver_label, role, verdict (`approved` · `rejected`), chosen_rate, reasons, decided_at |
 | `Milestone` | `MIL-` | proposal_id, name, due_date, state (`planned` · `in_progress` · `done` · `at_risk`) |
 | `KPIUpdate` | `KPI-` | proposal_id, week (1–8, one per week), planned vs actual revenue uplift, planned vs actual churn loss fraction, sla_status, risk_flag, note |

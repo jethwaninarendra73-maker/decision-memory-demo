@@ -30,7 +30,9 @@ if _missing:
     st.stop()
 
 from decision_memory.config import SettingsError, load_settings  # noqa: E402
+from decision_memory.db import SchemaError  # noqa: E402
 from decision_memory.logging_setup import configure_logging  # noqa: E402
+from decision_memory.repository import Repository  # noqa: E402
 from decision_memory.ui.shell import render_app  # noqa: E402
 
 try:
@@ -42,4 +44,13 @@ except SettingsError as exc:
 logger = configure_logging(settings.log_level)
 logger.debug("Rendering shell in %s mode", settings.effective_llm_mode)
 
-render_app(settings)
+try:
+    repo = Repository.open(settings.db_path)
+except SchemaError as exc:
+    st.error(f"{exc} Run `python scripts/reset_demo.py` to rebuild the demo database.")
+    st.stop()
+
+try:
+    render_app(settings, repo)
+finally:
+    repo.close()

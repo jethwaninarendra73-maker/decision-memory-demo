@@ -15,7 +15,6 @@ from decision_memory.agents import AGENTS
 from decision_memory.config import REPO_ROOT, SettingsError, load_settings
 from decision_memory.deps import missing_dependencies, missing_dependencies_message
 
-APP_FILE = REPO_ROOT / "app.py"
 AGENT_MODULES = (
     "capture_agent",
     "memory_agent",
@@ -119,15 +118,9 @@ def test_stub_entry_point_says_which_stage_builds_it() -> None:
 
 
 @pytest.fixture
-def app(monkeypatch: pytest.MonkeyPatch):
-    """Run app.py headlessly with no API key and no LLM flag."""
-    from streamlit.testing.v1 import AppTest
-
-    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-    monkeypatch.delenv("LLM_MODE", raising=False)
-    monkeypatch.delenv("DM_LOG_LEVEL", raising=False)
-    monkeypatch.delenv("DM_DB_PATH", raising=False)
-    return AppTest.from_file(str(APP_FILE), default_timeout=30).run()
+def app(run_app):
+    """app.py run headlessly against a seeded temporary database, with no API key."""
+    return run_app()
 
 
 def test_app_renders_without_exception(app) -> None:

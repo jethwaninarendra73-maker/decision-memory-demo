@@ -20,3 +20,6 @@ htmlcov/
 # macOS / Office
 .DS_Store
 ~$*
+
+# Source concept document (kept locally, not part of the repo)
+Enterprise Decision Intelligence & Institutional Memory Agent.docx

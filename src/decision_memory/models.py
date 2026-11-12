@@ -100,6 +100,13 @@ class RecommendationType(StrEnum):
     INSUFFICIENT_EVIDENCE = "insufficient_evidence"
 
 
+class EvidenceBasis(StrEnum):
+    """Whether a statement rests on cited sources or is a labelled demo assumption."""
+
+    SOURCE_SUPPORTED = "source_supported"
+    ASSUMED_FOR_DEMO = "assumed_for_demo"
+
+
 class RiskLevel(StrEnum):
     LOW = "low"
     MEDIUM = "medium"
@@ -323,8 +330,20 @@ class ScenarioResult(Record):
 
 
 class RecommendationReason(Contract):
+    """One reason behind a recommendation: cited, or openly labelled as an assumption."""
+
     text: NonEmptyStr
+    basis: EvidenceBasis = EvidenceBasis.SOURCE_SUPPORTED
     source_refs: list[SourceRef] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _supported_reasons_cite_sources(self) -> RecommendationReason:
+        if self.basis is EvidenceBasis.SOURCE_SUPPORTED and not self.source_refs:
+            raise ValueError(
+                "A source-supported reason must cite at least one excerpt; "
+                "otherwise label it assumed_for_demo"
+            )
+        return self
 
 
 class ExcludedOption(Contract):

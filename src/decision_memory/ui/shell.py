@@ -1,4 +1,4 @@
-"""Stage 01 application shell: banner, sidebar and six placeholder stage tabs."""
+"""Application shell: banner, demo role selector, six stage tabs and the evidence view."""
 
 from __future__ import annotations
 
@@ -6,8 +6,14 @@ import streamlit as st
 
 from decision_memory import DEMO_QUESTION, SYNTHETIC_BANNER
 from decision_memory.agents import AGENTS, AgentInfo
+from decision_memory.authz import DEFAULT_ROLE, DEMO_ROLE_NOTICE, ROLE_LABELS, MemoryView, parse_role
 from decision_memory.config import Settings
+from decision_memory.models import Role
+from decision_memory.repository import Repository
+from decision_memory.ui.evidence import render_evidence_explorer
 
+ROLE_KEY = "demo_role"
+ROLE_PARAM = "role"
 RESET_PLACEHOLDER_NOTE = (
     "Placeholder: for now, run `python scripts/reset_demo.py` in a terminal. "
     "The button is wired up in a later stage."
@@ -19,9 +25,29 @@ def render_banner() -> None:
     st.warning(f"**{SYNTHETIC_BANNER}** · fictional data, local only, advisory only", icon="⚠️")
 
 
-def render_sidebar(settings: Settings) -> None:
+def select_role() -> Role:
+    """Demo role switch. A demonstration control, not authentication."""
+    if ROLE_KEY not in st.session_state:
+        from_link = parse_role(st.query_params.get(ROLE_PARAM))
+        st.session_state[ROLE_KEY] = (from_link or DEFAULT_ROLE).value
+    st.selectbox(
+        "Demo role",
+        options=[role.value for role in Role],
+        format_func=lambda value: ROLE_LABELS[Role(value)],
+        key=ROLE_KEY,
+        help=DEMO_ROLE_NOTICE,
+    )
+    st.caption(DEMO_ROLE_NOTICE)
+    role = Role(st.session_state[ROLE_KEY])
+    # Keep the role in the address so evidence links open under the same demo role.
+    st.query_params[ROLE_PARAM] = role.value
+    return role
+
+
+def render_sidebar(settings: Settings) -> Role:
     with st.sidebar:
         st.header("Demo controls")
+        role = select_role()
         st.markdown(f"**Mode:** `{settings.effective_llm_mode}` (deterministic baseline)")
         if settings.llm_fallback_reason:
             st.info(f"{settings.llm_fallback_reason} Running offline.")
@@ -37,6 +63,7 @@ def render_sidebar(settings: Settings) -> None:
             "No live integrations, no real company or customer data, "
             "and nothing here executes a business action."
         )
+    return role
 
 
 def render_stage_placeholder(agent: AgentInfo) -> None:
@@ -52,14 +79,18 @@ def render_stage_placeholder(agent: AgentInfo) -> None:
     st.info(f"Not built yet. This agent arrives in Stage {agent.build_stage:02d}.")
 
 
-def render_app(settings: Settings) -> None:
+def render_app(settings: Settings, repo: Repository) -> None:
     """Render the whole shell. Called once per Streamlit rerun."""
     render_banner()
     st.title(settings.app_name)
     st.caption(f"Demo question: “{DEMO_QUESTION}”")
-    render_sidebar(settings)
+    role = render_sidebar(settings)
+    view = MemoryView(repo, role)
 
     tabs = st.tabs([agent.label for agent in AGENTS])
     for tab, agent in zip(tabs, AGENTS, strict=True):
         with tab:
             render_stage_placeholder(agent)
+
+    st.divider()
+    render_evidence_explorer(view)

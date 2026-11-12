@@ -4,7 +4,10 @@ Records go in and come out as validated Pydantic models. Referential integrity i
 enforced twice: by SQLite foreign keys, and here for things SQL cannot express
 (relation endpoints of mixed types, and excerpts that must match the source body).
 
-Stage 03 adds the permission filter on top of this layer.
+Permission filtering also lives here, in SQL: `find_visible` and `get_visible` return
+only what a demo role may see, so hidden rows never leave the database layer. Read paths
+for search, agents and the UI go through `authz.MemoryView`, which uses those methods.
+`find` and `get` are unfiltered and are for seeding, audited writes and tests.
 """
 
 from __future__ import annotations
@@ -33,6 +36,7 @@ from .models import (
     Recommendation,
     Record,
     Relation,
+    Role,
     ScenarioResult,
     SourceDocument,
     SourceRef,
@@ -90,6 +94,76 @@ _MODEL_BY_PREFIX: dict[str, type[Record]] = {model.ID_PREFIX: model for model in
 _SOURCE_REF_TABLES: dict[type[Record], tuple[str, str]] = {
     Decision: ("decision_source_refs", "decision_id"),
     Outcome: ("outcome_source_refs", "outcome_id"),
+}
+
+
+
+# --- visibility rules, as SQL fragments over a table alias --------------------
+#
+# A source is visible if it lists the role. A decision is visible only if it is
+# confirmed, cites at least one source, and every source it cites is visible. An
+# outcome needs a visible decision and only visible evidence of its own. An entity is
+# visible only through a visible decision that links to it. A relation needs both ends.
+
+
+def _source_visible(alias: str) -> str:
+    return (
+        "EXISTS (SELECT 1 FROM source_access_roles a "
+        f"WHERE a.source_id = {alias}.id AND a.role = :role)"
+    )
+
+
+def _all_refs_visible(link_table: str, owner_column: str, alias: str) -> str:
+    return (
+        f"NOT EXISTS (SELECT 1 FROM {link_table} r WHERE r.{owner_column} = {alias}.id "
+        "AND NOT EXISTS (SELECT 1 FROM source_access_roles a "
+        "WHERE a.source_id = r.source_id AND a.role = :role))"
+    )
+
+
+def _decision_visible(alias: str) -> str:
+    return (
+        f"{alias}.status = 'confirmed' "
+        f"AND EXISTS (SELECT 1 FROM decision_source_refs r WHERE r.decision_id = {alias}.id) "
+        f"AND {_all_refs_visible('decision_source_refs', 'decision_id', alias)}"
+    )
+
+
+def _outcome_visible(alias: str) -> str:
+    return (
+        f"EXISTS (SELECT 1 FROM decisions od WHERE od.id = {alias}.decision_id "
+        f"AND {_decision_visible('od')}) "
+        f"AND {_all_refs_visible('outcome_source_refs', 'outcome_id', alias)}"
+    )
+
+
+def _entity_visible(alias: str) -> str:
+    return (
+        "EXISTS (SELECT 1 FROM relations er JOIN decisions ed "
+        "ON ed.id IN (er.from_id, er.to_id) "
+        f"WHERE {alias}.id IN (er.from_id, er.to_id) AND {_decision_visible('ed')})"
+    )
+
+
+def _endpoint_visible(column: str) -> str:
+    return (
+        f"({column} IN (SELECT xd.id FROM decisions xd WHERE {_decision_visible('xd')}) "
+        f"OR {column} IN (SELECT xs.id FROM source_documents xs WHERE {_source_visible('xs')}) "
+        f"OR {column} IN (SELECT xo.id FROM outcomes xo WHERE {_outcome_visible('xo')}) "
+        f"OR {column} IN (SELECT xe.id FROM entities xe WHERE {_entity_visible('xe')}))"
+    )
+
+
+def _relation_visible(alias: str) -> str:
+    return f"{_endpoint_visible(alias + '.from_id')} AND {_endpoint_visible(alias + '.to_id')}"
+
+
+_VISIBILITY = {
+    SourceDocument: _source_visible,
+    Decision: _decision_visible,
+    Outcome: _outcome_visible,
+    Entity: _entity_visible,
+    Relation: _relation_visible,
 }
 
 
@@ -272,18 +346,45 @@ class Repository:
         return None if row is None else self._to_model(model, row)
 
     def find(self, model: type[R], **equals: Any) -> list[R]:
-        """Return records whose columns equal the given values, ordered by ID."""
+        """Return records whose columns equal the given values, ordered by ID. Unfiltered."""
+        table = _table_for(model)
+        clauses, params = self._filters(model, equals)
+        sql = f"SELECT t.* FROM {table.name} t"
+        if clauses:
+            sql += " WHERE " + " AND ".join(clauses)
+        sql += " ORDER BY t.id"
+        rows = self._conn.execute(sql, params).fetchall()
+        return [self._to_model(model, row) for row in rows]
+
+    def find_visible(self, model: type[R], role: Role, **equals: Any) -> list[R]:
+        """Like `find`, but only records the demo role may see. Filtered in SQL."""
+        table = _table_for(model)
+        try:
+            visible = _VISIBILITY[model]
+        except KeyError:
+            raise RepositoryError(f"{model.__name__} has no visibility rule") from None
+        clauses, params = self._filters(model, equals)
+        params["role"] = Role(role).value  # an unknown role raises here: fail closed
+        conditions = " AND ".join([f"({visible('t')})", *clauses])
+        sql = f"SELECT t.* FROM {table.name} t WHERE {conditions} ORDER BY t.id"
+        rows = self._conn.execute(sql, params).fetchall()
+        return [self._to_model(model, row) for row in rows]
+
+    def get_visible(self, model: type[R], role: Role, record_id: str) -> R | None:
+        """The record if the role may see it, else None (same as if it did not exist)."""
+        found = self.find_visible(model, role, id=record_id)
+        return found[0] if found else None
+
+    @staticmethod
+    def _filters(model: type[Record], equals: dict[str, Any]) -> tuple[list[str], dict[str, Any]]:
         table = _table_for(model)
         filterable = set(column_names(model)) - set(table.json_fields)
         unknown = set(equals) - filterable
         if unknown:
             raise ValueError(f"Cannot filter {model.__name__} by {sorted(unknown)}")
-        sql = f"SELECT * FROM {table.name}"
-        if equals:
-            sql += " WHERE " + " AND ".join(f"{column} = ?" for column in equals)
-        sql += " ORDER BY id"
-        rows = self._conn.execute(sql, [_sql_value(value) for value in equals.values()])
-        return [self._to_model(model, row) for row in rows.fetchall()]
+        clauses = [f"t.{column} = :f_{column}" for column in equals]
+        params = {f"f_{column}": _sql_value(value) for column, value in equals.items()}
+        return clauses, params
 
     def count(self, model: type[Record]) -> int:
         table = _table_for(model)

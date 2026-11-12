@@ -4,7 +4,7 @@
 
 An offline-first Streamlit app that walks a Pricing Director through one question, *"Should we increase the freight surcharge by 5% for European customers next quarter?"*, using six logical agents: Decision Capture, Institutional Memory, Impact Analysis, Scenario Simulation, Recommendation and Governance.
 
-**Build status: Stage 02 of 15.** The app shell runs with six labelled stage tabs, and the storage layer exists: typed models, a SQLite schema, a repository, and a repeatable synthetic baseline. The agents are still stubs and the UI does not read the data yet. See [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md).
+**Build status: Stage 03 of 15.** The app shell runs with six labelled stage tabs, a demo role selector and an evidence explorer. Underneath are typed models, a SQLite store with a repeatable synthetic baseline, permission filtering, citation utilities and an audit trail. The six agents are still stubs. See [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md).
 
 ## Requirements
 
@@ -55,6 +55,33 @@ Baseline counts after either command:
 
 The fixtures live in [data/fixtures/](data/fixtures/README.md). `data/demo.db` is generated and git-ignored.
 
+## Demo roles and evidence
+
+Pick a **Demo role** in the sidebar: Pricing Director, Analyst or Restricted Executive. The **Evidence explorer** below the stage tabs lists only the sources that role may see, and opens any of them in full. A source can be linked directly, for example `http://localhost:8501/?role=analyst&evidence=SRC-006`.
+
+How visibility works:
+
+- Each source lists the roles allowed to see it.
+- A decision is shown only if it is confirmed and **every** source it cites is visible to the role. One hidden source withholds the whole decision, along with its outcomes, links and any entity reachable only through it.
+- A hidden record behaves exactly like one that does not exist: no title, snippet, ID or count is shown.
+- A statement that cannot be backed by visible sources is replaced with "Insufficient verifiable evidence." Nothing is filled in.
+- Citations look like `[SRC-006]` and carry the source title, type, date and the exact excerpt.
+- Capturing, confirming, editing and approving each write an audit event.
+
+In the seeded data, `SRC-019` (and so decision `DEC-015`) is visible to the Restricted Executive only, and `SRC-021` (and so `DEC-016`) is hidden from the Analyst.
+
+## Security limitations
+
+**Role switching is for demonstration only. It is not authentication or access control.**
+
+- Anyone who can open the app can pick any role, or put `?role=restricted_exec` in the address. There are no user accounts, passwords or sessions.
+- The filter shows what a correctly implemented permission model would hide. It does not protect the data: the SQLite file and the fixture files hold every record in plain text for anyone with access to this folder.
+- "Sources" are fictional text files. The `mock://` references are labels, not links, and nothing connects to Teams, Jira, SharePoint, email or ServiceNow.
+- Source text is treated as untrusted data: it is shown literally, never rendered as Markdown or HTML, and never interpreted as an instruction. That is tested for the display and filtering paths that exist today; the optional LLM path (Stage 12) will need its own checks.
+- An "approval" is a stored record. No pricing change, message, ticket or payment is ever executed.
+
+A real deployment would need enterprise sign-in, permissions inherited from each source system at query time, encryption, and an independent security review.
+
 ## Test
 
 ```bash
@@ -87,8 +114,12 @@ src/decision_memory/
   db.py                     SQLite connection and create-table bootstrap
   repository.py             typed create/read/update; the only module that runs SQL
   seed.py                   fixture loader, idempotent seed, reset
+  authz.py                  demo roles and MemoryView, the role-scoped read window
+  provenance.py             [SRC-...] citations, evidence items, insufficient-evidence rule
+  audit.py                  audited capture, review and approval writes
   agents/                   six agent modules (stubs until their stage)
-  ui/shell.py               banner, sidebar, six stage tabs
+  ui/shell.py               banner, sidebar with role selector, six stage tabs
+  ui/evidence.py            evidence explorer and source detail view
 scripts/seed_demo.py        load the baseline
 scripts/reset_demo.py       wipe and rebuild the baseline
 data/fixtures/              synthetic fixtures (committed)
@@ -106,5 +137,4 @@ docs/                       product spec and implementation plan
 ## Not available yet
 
 - **Demo reset button**: the sidebar button is still a disabled placeholder; use `python scripts/reset_demo.py`.
-- **Permissions**: role tags are stored on every source, but nothing enforces them until Stage 03.
-- All six agents, the data views in the UI, and the optional Anthropic mode.
+- All six agents, the decision graph, precedent search, and the optional Anthropic mode.

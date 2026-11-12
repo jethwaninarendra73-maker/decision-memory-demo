@@ -1,6 +1,6 @@
 # Implementation Plan — Decision Memory MVP
 
-Status: **Stage 02 complete (typed models, SQLite schema, repository, 16 seeded decisions, 105 tests). Next: Stage 03.**
+Status: **Stage 03 complete (permission filtering, citations, audit trail, role selector, evidence explorer; 180 tests). Next: Stage 04.**
 Each stage is one Claude Code prompt from the build-prompt pack. Implement ONE stage, get its gate green, commit, then stop.
 
 ## Stages
