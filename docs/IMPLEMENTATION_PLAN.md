@@ -1,6 +1,6 @@
 # Implementation Plan — Decision Memory MVP
 
-Status: **Stage 03 complete (permission filtering, citations, audit trail, role selector, evidence explorer; 180 tests). Next: Stage 04.**
+Status: **Stage 04 complete (Agent 1 Decision Capture: parser, review, confirm and save; 268 tests). Next: Stage 05.**
 Each stage is one Claude Code prompt from the build-prompt pack. Implement ONE stage, get its gate green, commit, then stop.
 
 ## Stages

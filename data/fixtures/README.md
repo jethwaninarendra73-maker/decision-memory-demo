@@ -9,6 +9,7 @@ Everything in this folder is fictional: the company, the people, the customers a
 | `decisions.json` | 16 historical freight pricing decisions, each citing exact excerpts from the sources |
 | `outcomes.json` | 14 observed outcomes with expected versus actual values |
 | `relations.json` | Decision-to-decision links (supersedes, contradicts, similar to, informed by) |
+| `capture/demo_transcript.md` | The meeting transcript Agent 1 captures live in the demo. Not seeded: it enters memory only when a reviewer confirms it |
 
 Rules the loader enforces (`src/decision_memory/seed.py`):
 

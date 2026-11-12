@@ -37,7 +37,7 @@ Implemented in `src/decision_memory/models.py` (Stage 02). Every stored record h
 | `KPIUpdate` | `KPI-` | proposal_id, week (1–8, one per week), planned vs actual revenue uplift, planned vs actual churn loss fraction, sla_status, risk_flag, note |
 | `AuditEvent` | `AUD-` | at, actor_label, role, action (`seed` · `capture` · `confirm` · `edit` · `approve` · `reject` · `kpi_update` · `close`), entity_type, entity_id, detail |
 
-`DecisionDraft` (Stage 04) and `ImpactAssessment` (Stage 07) are added with their agents.
+`DecisionDraft` (built in Stage 04) is what Agent 1 proposes: the decision fields, a rule-based confidence per field, `flags[]` for anything missing or uncertain, and `evidence[]` with the exact transcript offsets of each value. It is never stored; a reviewer signs off a `ReviewedDecision`, which is saved as a confirmed `Decision`. `ImpactAssessment` (Stage 07) is added with its agent.
 
 Proposal state machine: `draft → approved → in_progress → completed`, or `draft → rejected`. Any other transition is refused (enforced in Stage 10).
 

@@ -108,10 +108,10 @@ def test_agent_module_imports_and_exposes_info(module_name: str) -> None:
 
 
 def test_stub_entry_point_says_which_stage_builds_it() -> None:
-    from decision_memory.agents import capture_agent
+    from decision_memory.agents import memory_agent
 
-    with pytest.raises(NotImplementedError, match="Stage 04"):
-        capture_agent.extract_decision_draft("any transcript")
+    with pytest.raises(NotImplementedError, match="Stage 05"):
+        memory_agent.build_decision_graph("analyst")
 
 
 # --- Streamlit shell --------------------------------------------------------

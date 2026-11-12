@@ -4,7 +4,7 @@
 
 An offline-first Streamlit app that walks a Pricing Director through one question, *"Should we increase the freight surcharge by 5% for European customers next quarter?"*, using six logical agents: Decision Capture, Institutional Memory, Impact Analysis, Scenario Simulation, Recommendation and Governance.
 
-**Build status: Stage 03 of 15.** The app shell runs with six labelled stage tabs, a demo role selector and an evidence explorer. Underneath are typed models, a SQLite store with a repeatable synthetic baseline, permission filtering, citation utilities and an audit trail. The six agents are still stubs. See [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md).
+**Build status: Stage 04 of 15.** Agent 1 (Decision Capture) works end to end: a synthetic transcript becomes a reviewed, confirmed decision in memory. Underneath are typed models, a SQLite store with a repeatable synthetic baseline, permission filtering, citations and an audit trail. Agents 2 to 6 are still stubs. See [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md).
 
 ## Requirements
 
@@ -54,6 +54,30 @@ Baseline counts after either command:
 | proposals, scenario_results, recommendations, approvals, milestones, kpi_updates | 0 |
 
 The fixtures live in [data/fixtures/](data/fixtures/README.md). `data/demo.db` is generated and git-ignored.
+
+## Agent 1: capture a decision
+
+The first tab turns a meeting transcript into a decision that a human confirms.
+
+Demo steps (about 45 seconds):
+
+1. Run `python scripts/reset_demo.py`, then `streamlit run app.py`.
+2. Open tab **1 · Decision Capture**. **Demo transcript** is selected and the transcript is shown.
+3. Click **Extract decision**. The **Extracted decision card** appears with each field, its confidence, the character offsets of its evidence, and any flags. **Not treated as decisions** lists the eight lines that were left out and why.
+4. In **Review**, change anything you like, then click **Confirm and save to memory** (or **Reject draft**, which saves nothing).
+5. A green banner confirms `DEC-017`, and its transcript opens as `SRC-023` in the Evidence explorer.
+
+The demo transcript is [data/fixtures/capture/demo_transcript.md](data/fixtures/capture/demo_transcript.md). You can also **Paste text** or **Upload** a `.txt` or `.md` file. Use fictional text only.
+
+How a transcript is read:
+
+- Header lines `Meeting:`, `Date:` (YYYY-MM-DD) and `Attendees:`.
+- A decision is a line starting with `DECISION:`. Speech such as "we should" or "we decided", and lines marked `NO DECISION:`, `PARKED:`, `ACTION:` or `PROPOSAL:`, are never captured.
+- `OWNER:`, `REGION:`, `MARKET:`, `SEGMENT:`, `RATIONALE:`, `ALTERNATIVE:`, `RISK:` and `EXPECTED OUTCOME:` lines after a decision describe it.
+- A field that is absent, a placeholder such as "TBC", or contradictory is left blank and flagged. Owner, date, region, market and segment must be filled in by the reviewer before confirming.
+- Confidence is rule-based (0.9 stated on its own line, 0.6 derived or inconsistent, 0.3 hedged wording). It is not a model prediction, and it never confirms anything by itself.
+
+Pasted and uploaded text is only ever read as characters. It is not run, rendered, sent anywhere or followed as an instruction. Capturing the same transcript twice is refused, so reset before each rehearsal.
 
 ## Demo roles and evidence
 
@@ -117,8 +141,10 @@ src/decision_memory/
   authz.py                  demo roles and MemoryView, the role-scoped read window
   provenance.py             [SRC-...] citations, evidence items, insufficient-evidence rule
   audit.py                  audited capture, review and approval writes
-  agents/                   six agent modules (stubs until their stage)
+  agents/capture_agent.py   Agent 1: transcript parser and confirm-and-save
+  agents/                   agents 2 to 6 (stubs until their stage)
   ui/shell.py               banner, sidebar with role selector, six stage tabs
+  ui/capture.py             Agent 1 view: transcript, card, review, confirm
   ui/evidence.py            evidence explorer and source detail view
 scripts/seed_demo.py        load the baseline
 scripts/reset_demo.py       wipe and rebuild the baseline
@@ -137,4 +163,5 @@ docs/                       product spec and implementation plan
 ## Not available yet
 
 - **Demo reset button**: the sidebar button is still a disabled placeholder; use `python scripts/reset_demo.py`.
-- All six agents, the decision graph, precedent search, and the optional Anthropic mode.
+- Agents 2 to 6, the decision graph, precedent search, and the optional Anthropic mode.
+- Capture reviews one decision per transcript. If a transcript has several `DECISION:` lines, the first is reviewed.

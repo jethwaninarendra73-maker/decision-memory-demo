@@ -10,6 +10,7 @@ from decision_memory.authz import DEFAULT_ROLE, DEMO_ROLE_NOTICE, ROLE_LABELS, M
 from decision_memory.config import Settings
 from decision_memory.models import Role
 from decision_memory.repository import Repository
+from decision_memory.ui.capture import render_capture
 from decision_memory.ui.evidence import render_evidence_explorer
 
 ROLE_KEY = "demo_role"
@@ -90,7 +91,10 @@ def render_app(settings: Settings, repo: Repository) -> None:
     tabs = st.tabs([agent.label for agent in AGENTS])
     for tab, agent in zip(tabs, AGENTS, strict=True):
         with tab:
-            render_stage_placeholder(agent)
+            if agent.key == "capture":
+                render_capture(repo, view, settings.fixtures_dir)
+            else:
+                render_stage_placeholder(agent)
 
     st.divider()
     render_evidence_explorer(view)

@@ -96,9 +96,18 @@ def capture_decision(
 
 
 def review_decision(
-    repo: Repository, decision: Decision, *, actor_label: str, role: Role, now: datetime
+    repo: Repository,
+    decision: Decision,
+    *,
+    actor_label: str,
+    role: Role,
+    now: datetime,
+    note: str = "",
 ) -> Decision:
-    """Save a reviewed decision. Draft -> confirmed is logged as `confirm`, else `edit`."""
+    """Save a reviewed decision. Draft -> confirmed is logged as `confirm`, else `edit`.
+
+    `note` is appended to the audit detail. Keep it neutral: field names, never content.
+    """
     with repo.transaction():
         existing = repo.get(Decision, decision.id)
         # A decision the reviewer cannot see gets the same answer as one that does not exist.
@@ -123,10 +132,15 @@ def review_decision(
             action=AuditAction.CONFIRM if confirming else AuditAction.EDIT,
             entity_type="decision",
             entity_id=stored.id,
-            detail=(
-                "Confirmed by a human reviewer; now part of institutional memory."
-                if confirming
-                else "Edited in review."
+            detail=" ".join(
+                part
+                for part in (
+                    "Confirmed by a human reviewer; now part of institutional memory."
+                    if confirming
+                    else "Edited in review.",
+                    note,
+                )
+                if part
             ),
         )
     return stored

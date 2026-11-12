@@ -422,3 +422,188 @@ class AuditEvent(Record):
     entity_type: NonEmptyStr
     entity_id: NonEmptyStr
     detail: str = ""
+
+
+# --- decision capture (Agent 1) ---------------------------------------------
+
+
+class DraftField(StrEnum):
+    """Fields the capture agent tries to extract from a transcript."""
+
+    STATEMENT = "statement"
+    DECISION_DATE = "decision_date"
+    OWNER = "owner"
+    STAKEHOLDERS = "stakeholders"
+    REGION = "region"
+    MARKET = "market"
+    CUSTOMER_SEGMENT = "customer_segment"
+    SURCHARGE_RATE = "surcharge_rate"
+    RATIONALE = "rationale"
+    ALTERNATIVES = "alternatives"
+    RISKS = "risks"
+    EXPECTED_OUTCOME = "expected_outcome"
+
+
+class FlagKind(StrEnum):
+    MISSING = "missing"
+    UNCERTAIN = "uncertain"
+
+
+class FieldFlag(Contract):
+    """Why a field needs the reviewer's attention. The agent flags; it never guesses."""
+
+    field: DraftField
+    kind: FlagKind
+    reason: NonEmptyStr
+
+
+class EvidenceSpan(Contract):
+    """The exact transcript snippet a field was read from: `text[start:end] == excerpt`."""
+
+    field: DraftField
+    excerpt: NonEmptyStr
+    start_offset: Annotated[int, Field(ge=0)]
+    end_offset: Annotated[int, Field(gt=0)]
+
+    @model_validator(mode="after")
+    def _offsets_match_excerpt(self) -> EvidenceSpan:
+        if self.end_offset - self.start_offset != len(self.excerpt):
+            raise ValueError("end_offset - start_offset must equal the excerpt length")
+        return self
+
+
+class DecisionDraft(Contract):
+    """What the capture agent proposes. A human must review and confirm it.
+
+    Confidence is rule-based (how explicitly each field was stated), not a model
+    prediction, and it is derived from `field_confidence`; it cannot be set directly.
+    """
+
+    SCORED_FIELDS: ClassVar[tuple[DraftField, ...]] = (
+        DraftField.STATEMENT,
+        DraftField.DECISION_DATE,
+        DraftField.OWNER,
+        DraftField.STAKEHOLDERS,
+        DraftField.REGION,
+        DraftField.MARKET,
+        DraftField.CUSTOMER_SEGMENT,
+        DraftField.RATIONALE,
+        DraftField.RISKS,
+        DraftField.EXPECTED_OUTCOME,
+    )
+    REQUIRED_TO_CONFIRM: ClassVar[tuple[DraftField, ...]] = (
+        DraftField.STATEMENT,
+        DraftField.DECISION_DATE,
+        DraftField.OWNER,
+        DraftField.REGION,
+        DraftField.MARKET,
+        DraftField.CUSTOMER_SEGMENT,
+    )
+    INCOMPLETE_CONFIDENCE_CAP: ClassVar[float] = 0.6
+
+    title: str = ""
+    statement: NonEmptyStr
+    decision_date: date | None = None
+    owner: str | None = None
+    stakeholders: list[str] = Field(default_factory=list)
+    region: str | None = None
+    market: str | None = None
+    customer_segment: str | None = None
+    surcharge_rate: Fraction | None = None
+    rationale: str = ""
+    alternatives: list[str] = Field(default_factory=list)
+    risks: list[str] = Field(default_factory=list)
+    expected_outcome: str = ""
+    field_confidence: dict[DraftField, Fraction] = Field(default_factory=dict)
+    flags: list[FieldFlag] = Field(default_factory=list)
+    evidence: Annotated[list[EvidenceSpan], Field(min_length=1)]
+
+    def has_value(self, field: DraftField) -> bool:
+        value = getattr(self, field.value)
+        return value is not None and value != "" and value != []
+
+    @property
+    def missing_fields(self) -> list[DraftField]:
+        return [flag.field for flag in self.flags if flag.kind is FlagKind.MISSING]
+
+    @property
+    def uncertain_fields(self) -> list[DraftField]:
+        return [flag.field for flag in self.flags if flag.kind is FlagKind.UNCERTAIN]
+
+    @property
+    def blocking_fields(self) -> list[DraftField]:
+        """Fields a reviewer must fill in before the decision can be confirmed."""
+        return [field for field in self.REQUIRED_TO_CONFIRM if not self.has_value(field)]
+
+    @property
+    def confidence(self) -> float:
+        """Mean field confidence; never above the statement's own, capped while incomplete."""
+        scores = [self.field_confidence.get(field, 0.0) for field in self.SCORED_FIELDS]
+        overall = min(sum(scores) / len(scores), self.field_confidence[DraftField.STATEMENT])
+        if self.blocking_fields:
+            overall = min(overall, self.INCOMPLETE_CONFIDENCE_CAP)
+        return round(overall, 2)
+
+    @property
+    def confidence_label(self) -> str:
+        if self.confidence >= 0.8:
+            return "high"
+        return "medium" if self.confidence >= 0.5 else "low"
+
+    @model_validator(mode="after")
+    def _confidence_and_flags_are_consistent(self) -> DecisionDraft:
+        missing = set(self.missing_fields)
+        for field in DraftField:
+            present = self.has_value(field)
+            confidence = self.field_confidence.get(field, 0.0)
+            if not present and confidence > 0:
+                raise ValueError(f"{field.value} has no value, so its confidence must be 0")
+            if present and field in missing:
+                raise ValueError(f"{field.value} has a value but is flagged missing")
+            if field in self.SCORED_FIELDS:
+                if present and confidence <= 0:
+                    raise ValueError(f"{field.value} has a value but no confidence")
+                if not present and field not in missing:
+                    raise ValueError(f"{field.value} has no value and must be flagged missing")
+        if not any(span.field is DraftField.STATEMENT for span in self.evidence):
+            raise ValueError("The statement needs an evidence snippet")
+        return self
+
+
+class ReviewedDecision(Contract):
+    """The fields a human reviewer signs off. Required ones cannot be blank."""
+
+    model_config = ConfigDict(extra="forbid", validate_assignment=True, str_strip_whitespace=True)
+
+    title: NonEmptyStr
+    statement: NonEmptyStr
+    decision_date: date
+    owner: NonEmptyStr
+    stakeholders: list[str] = Field(default_factory=list)
+    region: NonEmptyStr
+    market: NonEmptyStr
+    customer_segment: NonEmptyStr
+    surcharge_rate: Fraction | None = None
+    rationale: str = ""
+    alternatives: list[str] = Field(default_factory=list)
+    risks: list[str] = Field(default_factory=list)
+    expected_outcome: str = ""
+
+
+class NonDecision(Contract):
+    """Transcript text that looks decision-like but was deliberately not captured."""
+
+    excerpt: NonEmptyStr
+    start_offset: Annotated[int, Field(ge=0)]
+    end_offset: Annotated[int, Field(gt=0)]
+    reason: NonEmptyStr
+
+
+class CaptureResult(Contract):
+    """Everything the capture agent read out of one transcript."""
+
+    meeting_title: str | None = None
+    has_synthetic_marker: bool
+    drafts: list[DecisionDraft] = Field(default_factory=list)
+    not_decisions: list[NonDecision] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
