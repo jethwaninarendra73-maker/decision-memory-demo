@@ -6,12 +6,19 @@ import streamlit as st
 
 from decision_memory import DEMO_QUESTION, SYNTHETIC_BANNER
 from decision_memory.agents import AGENTS, AgentInfo
-from decision_memory.authz import DEFAULT_ROLE, DEMO_ROLE_NOTICE, ROLE_LABELS, MemoryView, parse_role
+from decision_memory.authz import (
+    DEFAULT_ROLE,
+    DEMO_ROLE_NOTICE,
+    ROLE_LABELS,
+    MemoryView,
+    parse_role,
+)
 from decision_memory.config import Settings
 from decision_memory.models import Role
 from decision_memory.repository import Repository
 from decision_memory.ui.capture import render_capture
 from decision_memory.ui.evidence import render_evidence_explorer
+from decision_memory.ui.memory_graph import render_memory_graph
 
 ROLE_KEY = "demo_role"
 ROLE_PARAM = "role"
@@ -93,6 +100,8 @@ def render_app(settings: Settings, repo: Repository) -> None:
         with tab:
             if agent.key == "capture":
                 render_capture(repo, view, settings.fixtures_dir)
+            elif agent.key == "memory":
+                render_memory_graph(view)
             else:
                 render_stage_placeholder(agent)
 

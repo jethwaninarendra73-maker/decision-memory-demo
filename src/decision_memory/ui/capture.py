@@ -276,10 +276,13 @@ def _render_review(repo: Repository, view: MemoryView, text: str, result: Captur
     st.session_state[EVIDENCE_SELECT_KEY] = outcome.source.id
     st.session_state[NOTICE_KEY] = (
         "success",
-        f"Confirmed. {outcome.decision.id} is now in institutional memory, confirmed by "
-        f"{actor} ({ROLE_LABELS[view.role]}). Its transcript is stored as {outcome.source.id} "
-        f"with {len(outcome.decision.source_refs)} evidence excerpts, and the confirmation "
-        "is in the audit trail. The source is open in the Evidence explorer below.",
+        (
+            f"Confirmed. {outcome.decision.id} is now in institutional memory, confirmed by "
+            f"{actor} ({ROLE_LABELS[view.role]}). Its transcript is stored as "
+            f"{outcome.source.id} with {len(outcome.decision.source_refs)} evidence excerpts, "
+            "and the confirmation is in the audit trail. The source is open in the Evidence "
+            "explorer below."
+        ),
     )
     st.rerun()
 

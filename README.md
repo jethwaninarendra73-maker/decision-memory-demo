@@ -4,7 +4,7 @@
 
 An offline-first Streamlit app that walks a Pricing Director through one question, *"Should we increase the freight surcharge by 5% for European customers next quarter?"*, using six logical agents: Decision Capture, Institutional Memory, Impact Analysis, Scenario Simulation, Recommendation and Governance.
 
-**Build status: Stage 04 of 15.** Agent 1 (Decision Capture) works end to end: a synthetic transcript becomes a reviewed, confirmed decision in memory. Underneath are typed models, a SQLite store with a repeatable synthetic baseline, permission filtering, citations and an audit trail. Agents 2 to 6 are still stubs. See [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md).
+**Build status: Stage 05 of 15.** Agent 1 (Decision Capture) turns a synthetic transcript into a reviewed, confirmed decision in memory. Agent 2 (Institutional Memory) shows that memory as a typed decision graph, filtered for the selected demo role. Underneath are typed models, a SQLite store with a repeatable synthetic baseline, permission filtering, citations and an audit trail. Agents 3 to 6 are still stubs. See [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md).
 
 ## Requirements
 
@@ -79,6 +79,15 @@ How a transcript is read:
 
 Pasted and uploaded text is only ever read as characters. It is not run, rendered, sent anywhere or followed as an instruction. Capturing the same transcript twice is refused, so reset before each rehearsal.
 
+## Decision graph (Agent 2)
+
+Tab **2 · Institutional Memory** draws memory as a network of decisions, outcomes, markets, segments, customer groups, systems, risks, initiatives, stakeholders and the sources they cite.
+
+- The graph is a projection of the SQLite database, not a second store. It is rebuilt on every view, so a new decision or an updated outcome appears straight away.
+- It is built only from records the selected role may see. A hidden decision takes its outcomes, links and any entity reachable only through it out of the graph, and a source that only hidden records cite is left out too.
+- Every edge is typed. Stored relations keep their type (`SUPERSEDES`, `CONTRADICTS`, `SIMILAR_TO`, `INFORMED_BY`, `APPLIES_TO`, `AFFECTS`, `HAS_RISK`, `OWNED_BY`, `INVOLVES`, `PART_OF`). Two more are derived: `SUPPORTED_BY` from a decision or outcome to each source it cites, and `RESULTED_IN` from a decision to its outcome. A graph with an edge to a missing node cannot be built.
+- **Show node kinds** picks what to draw; **Focus** shows one decision and everything one hop from it; **View → Tables** lists every node and edge. The tables also appear automatically if the network cannot be drawn.
+
 ## Demo roles and evidence
 
 Pick a **Demo role** in the sidebar: Pricing Director, Analyst or Restricted Executive. The **Evidence explorer** below the stage tabs lists only the sources that role may see, and opens any of them in full. A source can be linked directly, for example `http://localhost:8501/?role=analyst&evidence=SRC-006`.
@@ -101,7 +110,7 @@ In the seeded data, `SRC-019` (and so decision `DEC-015`) is visible to the Rest
 - Anyone who can open the app can pick any role, or put `?role=restricted_exec` in the address. There are no user accounts, passwords or sessions.
 - The filter shows what a correctly implemented permission model would hide. It does not protect the data: the SQLite file and the fixture files hold every record in plain text for anyone with access to this folder.
 - "Sources" are fictional text files. The `mock://` references are labels, not links, and nothing connects to Teams, Jira, SharePoint, email or ServiceNow.
-- Source text is treated as untrusted data: it is shown literally, never rendered as Markdown or HTML, and never interpreted as an instruction. That is tested for the display and filtering paths that exist today; the optional LLM path (Stage 12) will need its own checks.
+- Source text is treated as untrusted data: it is shown literally, never rendered as Markdown or HTML, and never interpreted as an instruction. In the graph, labels are HTML-escaped before Plotly sees them. That is tested for the display and filtering paths that exist today; the optional LLM path (Stage 12) will need its own checks.
 - An "approval" is a stored record. No pricing change, message, ticket or payment is ever executed.
 
 A real deployment would need enterprise sign-in, permissions inherited from each source system at query time, encryption, and an independent security review.
@@ -114,6 +123,13 @@ python -m pytest
 ```
 
 Tests use temporary databases and never touch `data/demo.db`.
+
+Linting is optional. Ruff is not in the requirements; install it into the virtual environment if you want it. Settings are in [ruff.toml](ruff.toml).
+
+```bash
+pip install ruff
+ruff check .
+```
 
 ## Configuration (all optional)
 
@@ -142,9 +158,11 @@ src/decision_memory/
   provenance.py             [SRC-...] citations, evidence items, insufficient-evidence rule
   audit.py                  audited capture, review and approval writes
   agents/capture_agent.py   Agent 1: transcript parser and confirm-and-save
-  agents/                   agents 2 to 6 (stubs until their stage)
+  agents/memory_agent.py    Agent 2: role-filtered decision graph (NetworkX projection)
+  agents/                   agents 3 to 6 (stubs until their stage)
   ui/shell.py               banner, sidebar with role selector, six stage tabs
   ui/capture.py             Agent 1 view: transcript, card, review, confirm
+  ui/memory_graph.py        Agent 2 view: Plotly network with a table fallback
   ui/evidence.py            evidence explorer and source detail view
 scripts/seed_demo.py        load the baseline
 scripts/reset_demo.py       wipe and rebuild the baseline
@@ -163,5 +181,5 @@ docs/                       product spec and implementation plan
 ## Not available yet
 
 - **Demo reset button**: the sidebar button is still a disabled placeholder; use `python scripts/reset_demo.py`.
-- Agents 2 to 6, the decision graph, precedent search, and the optional Anthropic mode.
+- Agents 3 to 6, precedent search (the graph does not rank or highlight precedents yet), and the optional Anthropic mode.
 - Capture reviews one decision per transcript. If a transcript has several `DECISION:` lines, the first is reviewed.

@@ -56,7 +56,7 @@ class EntityKind(StrEnum):
 class RelationType(StrEnum):
     """Stored edge types.
 
-    `SUPPORTED_BY` (decision to source) and `RESULTED_IN` (decision to outcome) are
+    `SUPPORTED_BY` (decision or outcome to source) and `RESULTED_IN` (decision to outcome) are
     not stored as relations: the graph derives them from source refs and outcomes.
     """
 
@@ -607,3 +607,118 @@ class CaptureResult(Contract):
     drafts: list[DecisionDraft] = Field(default_factory=list)
     not_decisions: list[NonDecision] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
+
+
+# --- decision graph (Agent 2) -----------------------------------------------
+
+
+class NodeKind(StrEnum):
+    """What a graph node stands for. Entity nodes reuse the `EntityKind` values."""
+
+    DECISION = "decision"
+    OUTCOME = "outcome"
+    SOURCE = "source"
+    MARKET = "market"
+    SEGMENT = "segment"
+    CUSTOMER_GROUP = "customer_group"
+    SYSTEM = "system"
+    RISK = "risk"
+    INITIATIVE = "initiative"
+    STAKEHOLDER = "stakeholder"
+
+
+class EdgeType(StrEnum):
+    """Graph edge types: every stored `RelationType`, plus two derived ones.
+
+    `SUPPORTED_BY` links a decision or outcome to each source it cites, and
+    `RESULTED_IN` links a decision to its outcome. Neither is stored as a relation.
+    """
+
+    APPLIES_TO = "APPLIES_TO"
+    AFFECTS = "AFFECTS"
+    HAS_RISK = "HAS_RISK"
+    OWNED_BY = "OWNED_BY"
+    INVOLVES = "INVOLVES"
+    PART_OF = "PART_OF"
+    SIMILAR_TO = "SIMILAR_TO"
+    CONTRADICTS = "CONTRADICTS"
+    SUPERSEDES = "SUPERSEDES"
+    INFORMED_BY = "INFORMED_BY"
+    SUPPORTED_BY = "SUPPORTED_BY"
+    RESULTED_IN = "RESULTED_IN"
+
+
+DERIVED_EDGE_TYPES: frozenset[EdgeType] = frozenset({EdgeType.SUPPORTED_BY, EdgeType.RESULTED_IN})
+
+
+class GraphNode(Contract):
+    """One node of the decision graph. `label` and `detail` are short display strings."""
+
+    id: NonEmptyStr
+    kind: NodeKind
+    label: NonEmptyStr
+    detail: str = ""
+    node_date: date | None = None
+    region: str | None = None
+    verdict: OutcomeVerdict | None = None
+
+
+class GraphEdge(Contract):
+    """A typed, directed edge. Stored edges carry their relation ID; derived ones do not."""
+
+    from_id: NonEmptyStr
+    to_id: NonEmptyStr
+    edge_type: EdgeType
+    relation_id: str | None = None
+    note: str = ""
+
+    @property
+    def derived(self) -> bool:
+        return self.edge_type in DERIVED_EDGE_TYPES
+
+    @model_validator(mode="after")
+    def _stored_edges_name_their_relation(self) -> GraphEdge:
+        if self.derived and self.relation_id is not None:
+            raise ValueError(f"{self.edge_type} edges are derived and have no relation ID")
+        if not self.derived and self.relation_id is None:
+            raise ValueError(f"{self.edge_type} edges come from a stored relation; name it")
+        if self.from_id == self.to_id:
+            raise ValueError("An edge cannot link a node to itself")
+        return self
+
+
+class DecisionGraph(Contract):
+    """A permission-filtered projection of memory for one role. Never stored.
+
+    Node IDs are unique and every edge joins two nodes in the graph: a graph with a
+    dangling edge cannot be constructed.
+    """
+
+    role: Role
+    nodes: list[GraphNode] = Field(default_factory=list)
+    edges: list[GraphEdge] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _no_duplicates_or_dangling_edges(self) -> DecisionGraph:
+        ids = [node.id for node in self.nodes]
+        if len(ids) != len(set(ids)):
+            raise ValueError("Graph node IDs must be unique")
+        known = set(ids)
+        for edge in self.edges:
+            for end in (edge.from_id, edge.to_id):
+                if end not in known:
+                    raise ValueError(f"Dangling {edge.edge_type} edge: {end} is not a graph node")
+        keys = [(edge.from_id, edge.to_id, edge.edge_type) for edge in self.edges]
+        if len(keys) != len(set(keys)):
+            raise ValueError("An edge type may join the same two nodes only once")
+        return self
+
+    def node(self, node_id: str) -> GraphNode | None:
+        return next((node for node in self.nodes if node.id == node_id), None)
+
+    def node_ids(self, kind: NodeKind | None = None) -> list[str]:
+        return [node.id for node in self.nodes if kind is None or node.kind is kind]
+
+    def edges_of(self, node_id: str) -> list[GraphEdge]:
+        """Edges that start or end at the node."""
+        return [edge for edge in self.edges if node_id in (edge.from_id, edge.to_id)]

@@ -1,0 +1,15 @@
+# Ruff settings. Ruff is optional tooling, not a dependency: install it in the venv
+# with `pip install ruff` and run `ruff check .` / `ruff format --check .`.
+
+line-length = 100
+target-version = "py311"
+src = ["src"]
+
+[lint]
+# app.py and scripts/ deliberately import after putting src/ on sys.path (marked noqa).
+extend-select = ["E402"]
+
+[lint.isort]
+known-first-party = ["decision_memory"]
+# Tests import shared helpers from tests/conftest.py as their own last import block.
+known-local-folder = ["conftest"]

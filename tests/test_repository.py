@@ -354,12 +354,11 @@ def test_one_kpi_update_per_week(repo: Repository) -> None:
 
 def test_failed_transaction_leaves_nothing_behind(repo: Repository) -> None:
     source = make_source()
-    with pytest.raises(IntegrityViolationError):
-        with repo.transaction():
-            repo.add(source)
-            repo.add(make_decision(source, source_refs=[
-                SourceRef(source_id="SRC-404", excerpt="x", start_offset=0, end_offset=1)
-            ]))
+    with pytest.raises(IntegrityViolationError), repo.transaction():
+        repo.add(source)
+        repo.add(make_decision(source, source_refs=[
+            SourceRef(source_id="SRC-404", excerpt="x", start_offset=0, end_offset=1)
+        ]))
     assert repo.count(SourceDocument) == 0
     assert repo.counts()["decisions"] == 0
     repo.add(source)  # the connection is still usable
