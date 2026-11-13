@@ -70,7 +70,7 @@ Question ─▶ precedent search ─▶ 3 Impact ─▶ 4 Scenarios ─▶ 5 Rec
 | 5 | Recommendation | Precedents + impact + scenarios + guardrails | `Recommendation` | Guardrail rules, cited reasons, abstains without evidence, advisory only |
 | 6 | Governance | Approved recommendation, KPI entries | Tracker, `Outcome` linked to decision | Simulated approval; valid transitions; outcome flows back to graph and search |
 
-Precedent search (between 2 and 3) ranks accessible decisions by lexical overlap + region/segment/rate match + outcome relevance + recency decay, shows each score component, returns the top 3–5, and abstains when no decision is both topical (minimum lexical overlap) and above the score threshold. Failed precedents are surfaced as warnings, never as templates to repeat. Implemented in `src/decision_memory/precedent_search.py` (Stage 06).
+Precedent search (between 2 and 3) ranks accessible decisions by lexical overlap + region/segment/rate match + outcome relevance + recency decay, shows each score component, returns the top 3–5, and abstains when no decision is both topical (minimum lexical overlap) and above the score threshold. Failed precedents are surfaced as warnings, never as templates to repeat. When the question names a region, qualifying decisions from other regions are shown separately as lessons, not precedents. Implemented in `src/decision_memory/precedent_search.py` (Stage 06).
 
 ### Scenario formulas (defaults are synthetic)
 

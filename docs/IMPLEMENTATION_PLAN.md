@@ -1,6 +1,6 @@
 # Implementation Plan — Decision Memory MVP
 
-Status: **Stage 06 complete (precedent search: transparent four-component ranking, cited results, abstention, graph highlight; 352 tests). Next: Stage 07.**
+Status: **Stage 06 complete (precedent search: transparent four-component ranking, cited results, abstention, visible wording equivalences, lessons from other regions, thresholds checked on 21 labelled questions; 378 tests). Next: Stage 07.**
 Each stage is one Claude Code prompt from the build-prompt pack. Implement ONE stage, get its gate green, commit, then stop.
 
 ## Stages

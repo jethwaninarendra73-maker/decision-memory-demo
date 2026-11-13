@@ -95,7 +95,11 @@ def render_memory_tab(view: MemoryView) -> None:
     st.subheader("Agent 2 · Institutional Memory")
     result = render_precedent_search(view, date.today())
     st.divider()
-    render_memory_graph(view, highlight=result.precedent_ids if result else ())
+    render_memory_graph(
+        view,
+        highlight=result.precedent_ids if result else (),
+        lessons=result.cross_region_ids if result else (),
+    )
 
 
 def render_app(settings: Settings, repo: Repository) -> None:

@@ -8,6 +8,8 @@ the decision and its outcome. Nothing is learned and nothing is random.
 
 - lexical: share of the query's content terms found in the decision's text, each term
   weighted by how rare it is among the decisions this role can see (smoothed IDF).
+  Words that only name the asked region are left out here: the region is scored once,
+  under metadata.
 - metadata: mean of the checks the query actually specifies: region match, segment
   match, and surcharge-rate proximity (1 at the same rate, 0 at `rate_tolerance` apart).
   If the query specifies none of them, metadata is not applicable: its weight is shared
@@ -24,6 +26,10 @@ Abstention: a decision is a candidate only if its lexical score reaches `min_lex
 
 Failed precedents are returned with a warning: they show what to avoid, never a
 template to repeat.
+
+Lessons from other regions: when the question names a region, the best `cross_region_k`
+decisions from other regions that pass the same two bars are returned separately, as
+contrast. They are never counted as precedents for the asked region.
 
 Search reads only through `MemoryView`, so hidden decisions, outcomes and sources never
 enter ranking, term statistics, counts or citations.
@@ -77,9 +83,21 @@ class SearchSettings(Contract):
     recency_half_life_days: Annotated[int, Field(gt=0)] = 730
     no_outcome_relevance: Fraction = 0.3
     rate_tolerance: Annotated[float, Field(gt=0, le=1)] = 0.05
+    cross_region_k: Annotated[int, Field(ge=0, le=3)] = 2
 
 
 DEFAULT_SETTINGS = SearchSettings()
+
+
+def format_setting(value: float) -> str:
+    """A threshold or weight for display: three decimals at most, two at least.
+
+    Two fixed decimals would show a slider value of 0.475 as 0.47 or 0.48 depending on
+    float noise; rounding to three first keeps the text equal to what is applied.
+    """
+    text = f"{round(value, 3):.3f}"
+    return text.removesuffix("0")
+
 
 # --- query ------------------------------------------------------------------
 
@@ -127,6 +145,17 @@ def infer_query(text: str, as_of: date) -> SearchQuery:
 
 # --- text normalisation -----------------------------------------------------
 
+
+def region_terms(region: str) -> set[str]:
+    """Terms that name a region: its own words plus its keywords, after normalisation."""
+    words = set(terms(region))
+    for name, keywords in _REGION_KEYWORDS:
+        if name.casefold() == region.casefold():
+            for keyword in keywords:
+                words |= set(terms(keyword))
+    return words
+
+
 STOPWORDS: frozenset[str] = frozenset(
     """
     a an the and or but if of to in on at by for from with without into onto than then
@@ -135,24 +164,70 @@ STOPWORDS: frozenset[str] = frozenset(
     what which who whom how why when where whether all any each some such no not only
     also just very more most less least over under up down out about after before
     next last year years quarter quarters month months week weeks
+    good idea think consider worth sense happen happened much many get got
     """.split()  # noqa: SIM905 - one readable block instead of a 100-item literal
 )
-# Small, visible equivalences. Anything not listed is matched literally.
+# Visible equivalences: the search matches words, so everyday wording is mapped onto the
+# words the decisions use. Phrases are rewritten first, then single words (after plural
+# stripping). Anything not listed is matched literally. Both questions and decisions go
+# through the same mapping, and the UI lists every equivalence a question triggered.
+PHRASES: dict[str, str] = {
+    "price uplift": "surcharge increase",
+    "price increase": "surcharge increase",
+    "price rise": "surcharge increase",
+    "price hike": "surcharge increase",
+    "rate increase": "surcharge increase",
+    "rate rise": "surcharge increase",
+    "rate hike": "surcharge increase",
+    "customer loss": "churn",
+    "customer attrition": "churn",
+}
 SYNONYMS: dict[str, str] = {
+    # regions
     "european": "europe",
+    "eu": "europe",
     "apac": "asia",
     "usa": "america",
+    # direction of change
     "raise": "increase",
     "raising": "increase",
     "rise": "increase",
     "hike": "increase",
+    "uplift": "increase",
     "increasing": "increase",
     "increased": "increase",
+    # the charge itself
     "charge": "surcharge",
+    "fee": "surcharge",
+    "levy": "surcharge",
+    # who pays
+    "client": "customer",
+    "shipper": "customer",
     "contracted": "contract",
+    # how it is rolled out
+    "trial": "pilot",
+    "phased": "phase",
+    "phasing": "phase",
+    "staged": "phase",
+    "staggered": "phase",
+    "exempting": "exempt",
+    "exempted": "exempt",
+    "exemption": "exempt",
+    "exclude": "exempt",
+    "excluding": "exempt",
+    "exclusion": "exempt",
+    # what can go wrong
+    "attrition": "churn",
+    "rival": "competitor",
+    "competition": "competitor",
+    "invoice": "billing",
+    "invoicing": "billing",
 }
 _PERCENT_WORD = re.compile(r"\s*\bpercent\b")
 _TOKEN = re.compile(r"\d+(?:\.\d+)?%|[a-z][a-z-]*[a-z]|[a-z]")
+_PHRASE = re.compile(
+    r"\b(" + "|".join(re.escape(p) for p in sorted(PHRASES, key=len, reverse=True)) + r")s?\b"
+)
 
 
 def _stem(word: str) -> str:
@@ -163,19 +238,36 @@ def _stem(word: str) -> str:
     return word
 
 
-def terms(text: str) -> list[str]:
-    """Content terms of a text: lower-cased, hyphen-split, stopwords dropped, crude
-    plural stripping and the `SYNONYMS` map applied. Percentages stay as e.g. `5%`."""
+def normalise(text: str) -> tuple[list[str], list[tuple[str, str]]]:
+    """Content terms of a text, and the equivalences applied to get them.
+
+    Lower-cased; "percent" becomes "%"; `PHRASES` rewritten; hyphenated words split;
+    stopwords dropped; crude plural stripping; `SYNONYMS` applied. Percentages stay as
+    e.g. `5%`. Each equivalence is reported once as (what was written, what it became).
+    """
+    lowered = _PERCENT_WORD.sub("%", text.lower())
+    applied: list[tuple[str, str]] = [
+        (match.group(0), PHRASES[match.group(1)]) for match in _PHRASE.finditer(lowered)
+    ]
+    lowered = _PHRASE.sub(lambda match: PHRASES[match.group(1)], lowered)
     found: list[str] = []
-    for token in _TOKEN.findall(_PERCENT_WORD.sub("%", text.lower())):
+    for token in _TOKEN.findall(lowered):
         for part in [token] if token.endswith("%") else token.split("-"):
             if not part or part in STOPWORDS:
                 continue
-            word = part if part.endswith("%") else _stem(part)
-            word = SYNONYMS.get(word, SYNONYMS.get(part, word))
-            if word not in STOPWORDS:
-                found.append(word)
-    return list(dict.fromkeys(found))
+            stemmed = part if part.endswith("%") else _stem(part)
+            word = SYNONYMS.get(stemmed, SYNONYMS.get(part, stemmed))
+            if word in STOPWORDS:
+                continue
+            if word != stemmed:
+                applied.append((part, word))
+            found.append(word)
+    return list(dict.fromkeys(found)), list(dict.fromkeys(applied))
+
+
+def terms(text: str) -> list[str]:
+    """Content terms of a text, after the visible equivalences (see `normalise`)."""
+    return normalise(text)[0]
 
 
 def _decision_text(decision: Decision, outcome: Outcome | None) -> str:
@@ -250,7 +342,9 @@ class SearchResult(Contract):
     query: SearchQuery
     settings: SearchSettings
     query_terms: list[str]
+    equivalences: list[tuple[str, str]] = Field(default_factory=list)
     precedents: list[Precedent]
+    cross_region: list[Precedent] = Field(default_factory=list)
     ranked: list[Precedent]
     abstained: bool
     message: str
@@ -260,8 +354,13 @@ class SearchResult(Contract):
         return [precedent.decision_id for precedent in self.precedents]
 
     @property
+    def cross_region_ids(self) -> list[str]:
+        return [precedent.decision_id for precedent in self.cross_region]
+
+    @property
     def cited_source_ids(self) -> list[str]:
-        """Every source the returned precedents cite, in order, without duplicates."""
+        """Every source the returned precedents cite, in order, without duplicates.
+        Lessons from other regions are not precedents and are not included."""
         ids = [
             item.source_id
             for precedent in self.precedents
@@ -420,13 +519,39 @@ def _latest_outcomes(outcomes: Iterable[Outcome]) -> dict[str, Outcome]:
     return latest
 
 
+def select_precedents(
+    ranked: list[Precedent], query: SearchQuery, settings: SearchSettings
+) -> tuple[list[Precedent], list[Precedent]]:
+    """Apply the thresholds to an already ranked list: (precedents, lessons from other
+    regions). Pure, so thresholds can be studied without re-ranking."""
+    # A precedent must be topical, scored above the bar, and backed by visible evidence.
+    qualifying = [
+        p
+        for p in ranked
+        if p.component("lexical").value >= settings.min_lexical
+        and p.score >= settings.min_score
+        and p.decision_claim.supported
+    ]
+    if not query.region:
+        return qualifying[: settings.top_k], []
+    # Region match is part of the score, so precedents are mostly in-region; the
+    # out-of-region ones that still qualify are lessons, kept apart from them.
+    in_region = [p for p in qualifying if _same(p.region, query.region)]
+    elsewhere = [p for p in qualifying if not _same(p.region, query.region)]
+    return in_region[: settings.top_k], elsewhere[: settings.cross_region_k]
+
+
 def search_precedents(
     view: MemoryView, query: SearchQuery, settings: SearchSettings = DEFAULT_SETTINGS
 ) -> SearchResult:
     """Rank every decision the role may see and return the top precedents, or abstain."""
     decisions = view.decisions()
     outcomes = _latest_outcomes(view.outcomes())
-    query_terms = terms(query.text)
+    query_terms, equivalences = normalise(query.text)
+    if query.region:
+        # The region is scored under metadata; counting its words again here would let
+        # "European offices" look topical for any European decision.
+        query_terms = [t for t in query_terms if t not in region_terms(query.region)]
     idf, unseen = _idf(set(terms(_decision_text(d, outcomes.get(d.id)))) for d in decisions)
 
     ranked = sorted(
@@ -436,26 +561,34 @@ def search_precedents(
         ),
         key=lambda p: (-p.score, -p.decision_date.toordinal(), p.decision_id),
     )
-    # A precedent must be topical, scored above the bar, and backed by visible evidence.
-    precedents = [
-        p
-        for p in ranked
-        if p.candidate and p.score >= settings.min_score and p.decision_claim.supported
-    ][: settings.top_k]
-
+    precedents, cross_region = select_precedents(ranked, query, settings)
+    bars = (
+        f"lexical ≥ {format_setting(settings.min_lexical)} and "
+        f"score ≥ {format_setting(settings.min_score)}"
+    )
     if precedents:
-        message = f"{len(precedents)} precedent(s) above the {settings.min_score:.2f} threshold."
+        message = (
+            f"{len(precedents)} precedent(s) above the "
+            f"{format_setting(settings.min_score)} threshold."
+        )
+    elif cross_region:
+        message = (
+            f"{INSUFFICIENT_EVIDENCE_TEXT} No visible decision in {query.region} matches this "
+            f"question closely enough ({bars}). Lessons from other regions are shown "
+            "for contrast only."
+        )
     else:
         message = (
             f"{INSUFFICIENT_EVIDENCE_TEXT} No visible decision matches this question closely "
-            f"enough (needs lexical ≥ {settings.min_lexical:.2f} and score ≥ "
-            f"{settings.min_score:.2f})."
+            f"enough (needs {bars})."
         )
     return SearchResult(
         query=query,
         settings=settings,
         query_terms=query_terms,
+        equivalences=equivalences,
         precedents=precedents,
+        cross_region=cross_region,
         ranked=ranked,
         abstained=not precedents,
         message=message,

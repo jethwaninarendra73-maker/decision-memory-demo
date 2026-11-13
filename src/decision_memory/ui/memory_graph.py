@@ -42,6 +42,8 @@ WHOLE_GRAPH = "__whole__"
 PRECEDENTS = "__precedents__"
 HIGHLIGHT_NAME = "Search precedent"
 HIGHLIGHT_COLOUR = "#facc15"
+LESSON_NAME = "Other-region lesson"
+LESSON_COLOUR = "#a78bfa"
 FALLBACK_NOTICE = "The network view could not be drawn here, so the graph is shown as tables."
 EMPTY_MESSAGE = "No confirmed decisions are visible to this role, so the graph is empty."
 
@@ -102,16 +104,20 @@ def safe_text(text: str) -> str:
     return html.escape(text, quote=True)
 
 
-def node_rows(graph: DecisionGraph, highlight: Sequence[str] = ()) -> list[dict[str, str]]:
-    """Table fallback: one row per node; search precedents carry their rank."""
-    ranks = {node_id: rank for rank, node_id in enumerate(highlight, start=1)}
+def node_rows(
+    graph: DecisionGraph, highlight: Sequence[str] = (), lessons: Sequence[str] = ()
+) -> list[dict[str, str]]:
+    """Table fallback: one row per node; search precedents carry their rank, lessons from
+    other regions are marked as such."""
+    ranks = {node_id: f"lesson {rank}" for rank, node_id in enumerate(lessons, start=1)}
+    ranks |= {node_id: str(rank) for rank, node_id in enumerate(highlight, start=1)}
     return [
         {
             "Node": node.id,
             "Kind": KIND_LABELS[node.kind],
             "Label": node.label,
             "Detail": node.detail,
-            "Precedent rank": str(ranks[node.id]) if node.id in ranks else "",
+            "Precedent rank": ranks.get(node.id, ""),
         }
         for node in graph.nodes
     ]
@@ -135,24 +141,31 @@ def build_figure(
     graph: DecisionGraph,
     positions: dict[str, tuple[float, float]],
     highlight: Sequence[str] = (),
+    lessons: Sequence[str] = (),
 ) -> Any:
     """Plotly figure of the graph: one trace per edge type and one per node kind, plus a
-    ring around each search precedent in `highlight` that is in the graph."""
+    ring around each search precedent (`highlight`) and each lesson from another region
+    (`lessons`) that is in the graph, in two different colours."""
     import plotly.graph_objects as go
 
     figure = go.Figure()
-    rings = [node_id for node_id in highlight if node_id in positions]
-    if rings:
+    for ids, name, colour in (
+        (highlight, HIGHLIGHT_NAME, HIGHLIGHT_COLOUR),
+        (lessons, LESSON_NAME, LESSON_COLOUR),
+    ):
+        rings = [node_id for node_id in ids if node_id in positions]
+        if not rings:
+            continue
         figure.add_trace(
             go.Scatter(
                 x=[positions[node_id][0] for node_id in rings],
                 y=[positions[node_id][1] for node_id in rings],
                 mode="markers",
-                name=HIGHLIGHT_NAME,
+                name=name,
                 legendgroup="search",
                 legendgrouptitle_text="Search",
                 hoverinfo="skip",
-                marker={"size": 34, "color": HIGHLIGHT_COLOUR, "opacity": 0.55},
+                marker={"size": 34, "color": colour, "opacity": 0.55},
             )
         )
     for edge_type in EdgeType:
@@ -232,22 +245,26 @@ def build_figure(
     return figure
 
 
-def render_tables(graph: DecisionGraph, highlight: Sequence[str] = ()) -> None:
+def render_tables(
+    graph: DecisionGraph, highlight: Sequence[str] = (), lessons: Sequence[str] = ()
+) -> None:
     st.markdown(f"**Nodes** ({len(graph.nodes)})")
-    st.dataframe(node_rows(graph, highlight), hide_index=True, key="graph_nodes_table")
+    st.dataframe(node_rows(graph, highlight, lessons), hide_index=True, key="graph_nodes_table")
     st.markdown(f"**Edges** ({len(graph.edges)})")
     st.dataframe(edge_rows(graph), hide_index=True, key="graph_edges_table")
 
 
-def render_network(graph: DecisionGraph, highlight: Sequence[str] = ()) -> None:
+def render_network(
+    graph: DecisionGraph, highlight: Sequence[str] = (), lessons: Sequence[str] = ()
+) -> None:
     """Draw the network; on any drawing failure, fall back to the tables."""
     try:
-        figure = build_figure(graph, layout(graph), highlight)
+        figure = build_figure(graph, layout(graph), highlight, lessons)
         st.plotly_chart(figure, key="graph_network")
     except Exception:  # any rendering failure must degrade to tables, never crash the tab
         logger.exception("Network view failed; showing the table fallback")
         st.info(FALLBACK_NOTICE)
-        render_tables(graph, highlight)
+        render_tables(graph, highlight, lessons)
         return
     st.caption(
         "Hover a node for its detail. Thick lines link decisions to each other; "
@@ -285,7 +302,7 @@ def _choose_view(graph: DecisionGraph, highlight: Sequence[str]) -> tuple[Decisi
             format_func=lambda value: (
                 "Whole graph"
                 if value == WHOLE_GRAPH
-                else "Search precedents (1 hop)"
+                else "Search results: precedents and lessons (1 hop)"
                 if value == PRECEDENTS
                 else f"{value} · {decisions[value]} (1 hop)"
             ),
@@ -303,8 +320,10 @@ def _choose_view(graph: DecisionGraph, highlight: Sequence[str]) -> tuple[Decisi
     return filter_kinds(shown, (NodeKind(value) for value in kinds)), mode
 
 
-def render_memory_graph(view: MemoryView, highlight: Sequence[str] = ()) -> None:
-    """The decision graph, with search precedents (if any) highlighted."""
+def render_memory_graph(
+    view: MemoryView, highlight: Sequence[str] = (), lessons: Sequence[str] = ()
+) -> None:
+    """The decision graph, with search precedents and other-region lessons highlighted."""
     st.markdown("#### Decision graph")
     st.caption(
         "A projection of the SQLite memory, rebuilt on every view and filtered for the "
@@ -331,14 +350,17 @@ def render_memory_graph(view: MemoryView, highlight: Sequence[str] = ()) -> None
     )
 
     highlight = [node_id for node_id in highlight if graph.node(node_id) is not None]
-    shown, mode = _choose_view(graph, highlight)
+    lessons = [node_id for node_id in lessons if graph.node(node_id) is not None]
+    shown, mode = _choose_view(graph, [*highlight, *lessons])
     if not shown.nodes:
         st.info("Nothing to show: choose at least one node kind.")
         return
     st.caption(f"Showing {len(shown.nodes)} nodes and {len(shown.edges)} edges.")
     if highlight:
         st.caption("Highlighted search precedents: " + ", ".join(highlight))
+    if lessons:
+        st.caption("Highlighted lessons from other regions: " + ", ".join(lessons))
     if mode == MODES[0]:
-        render_network(shown, highlight)
+        render_network(shown, highlight, lessons)
     else:
-        render_tables(shown, highlight)
+        render_tables(shown, highlight, lessons)

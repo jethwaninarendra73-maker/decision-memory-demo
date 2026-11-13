@@ -84,13 +84,16 @@ Pasted and uploaded text is only ever read as characters. It is not run, rendere
 Tab **2 · Institutional Memory** opens with **Ask institutional memory**. The demo question is filled in; type any other question to search the decisions the selected role can see.
 
 - The region and surcharge rate are read from the question only when it states exactly one of each (for example "European" and "5%"). They appear under **Filters read from the question**, where they can be changed, along with an optional customer segment and the date recency is measured from.
-- Each decision gets four scores between 0 and 1, all shown with how they were worked out: **lexical overlap** (share of the question's terms found in the decision, rarer terms counting more), **region / segment / rate match**, **outcome relevance** (1 if an outcome has been observed, 0.3 if not), and **recency** (halves every 730 days). The total is 0.40 × lexical + 0.30 × match + 0.15 × outcome + 0.15 × recency. If the question sets no region, segment or rate, the match weight is shared across the other three.
+- Search matches words, helped by a short, visible list of equivalences (for example "price uplift" → "surcharge increase", "client" → "customer", "trial" → "pilot", "EU" → "Europe"). The equivalences a question triggered are listed under it; the full list is `PHRASES` and `SYNONYMS` in `src/decision_memory/precedent_search.py`.
+- Each decision gets four scores between 0 and 1, all shown with how they were worked out: **lexical overlap** (share of the question's terms found in the decision, rarer terms counting more; words that only name the asked region are left to the match score, so they are not counted twice), **region / segment / rate match**, **outcome relevance** (1 if an outcome has been observed, 0.3 if not), and **recency** (halves every 730 days). The total is 0.40 × lexical + 0.30 × match + 0.15 × outcome + 0.15 × recency. If the question sets no region, segment or rate, the match weight is shared across the other three.
 - Up to five decisions are returned. A decision must share enough of the question's terms (lexical at least 0.5) and score at least 0.45, so a matching region or rate alone never makes something a precedent. If nothing qualifies, the answer is "Insufficient verifiable evidence." and nothing is returned.
+- When the question names a region, up to two decisions from **other** regions that clear the same two bars are shown under **Lessons from other regions**. They are contrast, not precedents for the asked region, and they are not cited as such.
+- Both bars can be changed with sliders under **Filters read from the question**. The defaults are checked against 21 hand-labelled questions in `tests/search_eval.json` (demo, reworded and specific questions that should find given decisions, and off-topic ones that should abstain). On that set, every setting with lexical 0.40–0.575 and score 0.20–0.60 gives the expected answers, and a test keeps every setting within ±0.05 of the defaults passing. The labels are the author's reading of the fictional data, not a benchmark.
 - Every result cites what was decided and what happened, with `[SRC-…]` excerpts. A failed precedent is shown with a warning: it is a lesson, not a template.
 - **Every decision this role can see, ranked** lists all scores, including the ones that did not qualify.
-- The returned precedents are highlighted in the graph below, and **Focus → Search precedents** shows just them and their neighbours.
+- Precedents (yellow) and lessons from other regions (purple) are highlighted in the graph below, and **Focus → Search results** shows just them and their neighbours.
 
-For the demo question the precedents are DEC-009 (UK and Ireland), DEC-007 (Italy), DEC-004 (France), DEC-011 (Germany 3%) and DEC-001 (Germany 6%, failed). Exact scores move slightly with the recency date.
+For the demo question the precedents are DEC-009 (UK and Ireland), DEC-007 (Italy), DEC-004 (France), DEC-011 (Germany 3%) and DEC-001 (Germany 6%, failed), and the lesson from another region is DEC-014 (Singapore copied the France 5% surcharge without a local pilot, and failed). Exact scores move slightly with the recency date.
 
 ## Decision graph (Agent 2)
 
@@ -197,5 +200,5 @@ docs/                       product spec and implementation plan
 
 - **Demo reset button**: the sidebar button is still a disabled placeholder; use `python scripts/reset_demo.py`.
 - Agents 3 to 6 and the optional Anthropic mode.
-- Precedent search matches words, not meaning: a question phrased with different vocabulary from the decisions (say, "price uplift" instead of "surcharge increase") can miss or abstain.
+- Precedent search matches words, not meaning. The equivalence list covers common pricing wording, but a question phrased in words it does not list can still miss or abstain.
 - Capture reviews one decision per transcript. If a transcript has several `DECISION:` lines, the first is reviewed.

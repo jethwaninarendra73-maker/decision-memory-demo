@@ -14,6 +14,7 @@ from decision_memory.repository import Repository
 from decision_memory.ui.memory_graph import (
     FOCUS_KEY,
     HIGHLIGHT_NAME,
+    LESSON_NAME,
     MODE_KEY,
     PRECEDENTS,
     build_figure,
@@ -21,6 +22,9 @@ from decision_memory.ui.memory_graph import (
 )
 from decision_memory.ui.search import (
     AS_OF_KEY,
+    LESSONS_HEADING,
+    MIN_LEXICAL_KEY,
+    MIN_SCORE_KEY,
     NOTHING_TO_SEARCH,
     QUESTION_KEY,
     RATE_KEY,
@@ -53,8 +57,16 @@ def chart_traces(app) -> list[str]:
     ]
 
 
-def precedent_headers(app) -> list[str]:
+def card_headers(app) -> list[str]:
     return [m.value for m in app.markdown if m.value.startswith("**") and "· score" in m.value]
+
+
+def precedent_headers(app) -> list[str]:
+    return [h for h in card_headers(app) if not h.startswith("**Lesson")]
+
+
+def lesson_headers(app) -> list[str]:
+    return [h for h in card_headers(app) if h.startswith("**Lesson")]
 
 
 def test_demo_question_lists_cited_precedents_and_highlights_them(run_app) -> None:
@@ -149,3 +161,52 @@ def test_neighbourhoods_is_the_union_of_one_hop_neighbourhoods(seeded: Repositor
     ids = set(union.node_ids(NodeKind.DECISION))
     assert {"DEC-004", "DEC-007", "DEC-012"} <= ids
     assert neighbourhoods(graph, []).nodes == []
+
+
+# --- wording, lessons and thresholds ----------------------------------------
+
+
+def test_demo_question_shows_the_other_region_lesson_apart(run_app) -> None:
+    app = at_fixed_date(run_app())
+    assert [h.split(" · ")[0] for h in lesson_headers(app)] == ["**Lesson 1. DEC-014"]
+    text = rendered_text(app)
+    assert f"##### {LESSONS_HEADING}" in text
+    assert "not precedents for Europe" in text
+    assert "Highlighted lessons from other regions: DEC-014" in text
+    assert LESSON_NAME in chart_traces(app) and HIGHLIGHT_NAME in chart_traces(app)
+
+
+def test_reworded_question_lists_the_equivalences_it_used(run_app) -> None:
+    app = ask(at_fixed_date(run_app()), "Is a 5% price increase for EU shippers a good idea?")
+    text = rendered_text(app)
+    assert "Equivalences applied: price increase → surcharge increase; eu → europe" in text
+    assert precedent_headers(app)  # it finds precedents instead of abstaining
+
+
+def test_threshold_sliders_change_the_answer(run_app) -> None:
+    app = at_fixed_date(run_app())
+    assert app.slider(key=MIN_LEXICAL_KEY).value == 0.5
+    assert app.slider(key=MIN_SCORE_KEY).value == 0.45
+    app.slider(key=MIN_LEXICAL_KEY).set_value(0.95)
+    app = app.run()
+    assert not precedent_headers(app)
+    assert any(w.value.startswith("Insufficient verifiable evidence.") for w in app.warning)
+    assert "lexical ≥ 0.95" in rendered_text(app)
+
+
+def test_lesson_rows_in_the_graph_table(seeded: Repository) -> None:
+    graph = build_decision_graph(MemoryView(seeded, Role.ANALYST))
+    rows = {r["Node"]: r["Precedent rank"] for r in node_rows(graph, ["DEC-004"], ["DEC-014"])}
+    assert rows["DEC-004"] == "1" and rows["DEC-014"] == "lesson 1"
+    figure = build_figure(graph, layout(graph), ["DEC-004"], ["DEC-014"])
+    assert [t.name for t in figure.data[:2]] == [HIGHLIGHT_NAME, LESSON_NAME]
+
+
+def test_slider_half_steps_are_shown_exactly(run_app) -> None:
+    app = at_fixed_date(run_app())
+    app.slider(key=MIN_LEXICAL_KEY).set_value(0.475)
+    app.slider(key=MIN_SCORE_KEY).set_value(0.425)
+    app = app.run()
+    text = rendered_text(app)
+    assert "A decision needs lexical ≥ 0.475 and score ≥ 0.425" in text
+    assert "above the 0.425 threshold." in text
