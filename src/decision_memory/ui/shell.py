@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import date
+
 import streamlit as st
 
 from decision_memory import DEMO_QUESTION, SYNTHETIC_BANNER
@@ -19,6 +21,7 @@ from decision_memory.repository import Repository
 from decision_memory.ui.capture import render_capture
 from decision_memory.ui.evidence import render_evidence_explorer
 from decision_memory.ui.memory_graph import render_memory_graph
+from decision_memory.ui.search import render_precedent_search
 
 ROLE_KEY = "demo_role"
 ROLE_PARAM = "role"
@@ -87,6 +90,14 @@ def render_stage_placeholder(agent: AgentInfo) -> None:
     st.info(f"Not built yet. This agent arrives in Stage {agent.build_stage:02d}.")
 
 
+def render_memory_tab(view: MemoryView) -> None:
+    """Agent 2: ask a question, then see the cited precedents highlighted in the graph."""
+    st.subheader("Agent 2 · Institutional Memory")
+    result = render_precedent_search(view, date.today())
+    st.divider()
+    render_memory_graph(view, highlight=result.precedent_ids if result else ())
+
+
 def render_app(settings: Settings, repo: Repository) -> None:
     """Render the whole shell. Called once per Streamlit rerun."""
     render_banner()
@@ -101,7 +112,7 @@ def render_app(settings: Settings, repo: Repository) -> None:
             if agent.key == "capture":
                 render_capture(repo, view, settings.fixtures_dir)
             elif agent.key == "memory":
-                render_memory_graph(view)
+                render_memory_tab(view)
             else:
                 render_stage_placeholder(agent)
 

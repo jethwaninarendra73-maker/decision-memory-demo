@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import html
 import logging
+from collections.abc import Sequence
 from typing import Any
 
 import streamlit as st
@@ -26,6 +27,7 @@ from decision_memory.agents.memory_agent import (
     kind_counts,
     layout,
     neighbourhood,
+    neighbourhoods,
 )
 from decision_memory.authz import MemoryView
 from decision_memory.models import DERIVED_EDGE_TYPES, DecisionGraph, EdgeType, NodeKind
@@ -37,6 +39,9 @@ FOCUS_KEY = "graph_focus"
 MODE_KEY = "graph_mode"
 MODES = ("Network", "Tables")
 WHOLE_GRAPH = "__whole__"
+PRECEDENTS = "__precedents__"
+HIGHLIGHT_NAME = "Search precedent"
+HIGHLIGHT_COLOUR = "#facc15"
 FALLBACK_NOTICE = "The network view could not be drawn here, so the graph is shown as tables."
 EMPTY_MESSAGE = "No confirmed decisions are visible to this role, so the graph is empty."
 
@@ -97,10 +102,17 @@ def safe_text(text: str) -> str:
     return html.escape(text, quote=True)
 
 
-def node_rows(graph: DecisionGraph) -> list[dict[str, str]]:
-    """Table fallback: one row per node."""
+def node_rows(graph: DecisionGraph, highlight: Sequence[str] = ()) -> list[dict[str, str]]:
+    """Table fallback: one row per node; search precedents carry their rank."""
+    ranks = {node_id: rank for rank, node_id in enumerate(highlight, start=1)}
     return [
-        {"Node": node.id, "Kind": KIND_LABELS[node.kind], "Label": node.label, "Detail": node.detail}
+        {
+            "Node": node.id,
+            "Kind": KIND_LABELS[node.kind],
+            "Label": node.label,
+            "Detail": node.detail,
+            "Precedent rank": str(ranks[node.id]) if node.id in ranks else "",
+        }
         for node in graph.nodes
     ]
 
@@ -119,11 +131,30 @@ def edge_rows(graph: DecisionGraph) -> list[dict[str, str]]:
     ]
 
 
-def build_figure(graph: DecisionGraph, positions: dict[str, tuple[float, float]]) -> Any:
-    """Plotly figure of the graph: one trace per edge type and one per node kind."""
+def build_figure(
+    graph: DecisionGraph,
+    positions: dict[str, tuple[float, float]],
+    highlight: Sequence[str] = (),
+) -> Any:
+    """Plotly figure of the graph: one trace per edge type and one per node kind, plus a
+    ring around each search precedent in `highlight` that is in the graph."""
     import plotly.graph_objects as go
 
     figure = go.Figure()
+    rings = [node_id for node_id in highlight if node_id in positions]
+    if rings:
+        figure.add_trace(
+            go.Scatter(
+                x=[positions[node_id][0] for node_id in rings],
+                y=[positions[node_id][1] for node_id in rings],
+                mode="markers",
+                name=HIGHLIGHT_NAME,
+                legendgroup="search",
+                legendgrouptitle_text="Search",
+                hoverinfo="skip",
+                marker={"size": 34, "color": HIGHLIGHT_COLOUR, "opacity": 0.55},
+            )
+        )
     for edge_type in EdgeType:
         edges = [edge for edge in graph.edges if edge.edge_type is edge_type]
         if not edges:
@@ -201,22 +232,22 @@ def build_figure(graph: DecisionGraph, positions: dict[str, tuple[float, float]]
     return figure
 
 
-def render_tables(graph: DecisionGraph) -> None:
+def render_tables(graph: DecisionGraph, highlight: Sequence[str] = ()) -> None:
     st.markdown(f"**Nodes** ({len(graph.nodes)})")
-    st.dataframe(node_rows(graph), hide_index=True, key="graph_nodes_table")
+    st.dataframe(node_rows(graph, highlight), hide_index=True, key="graph_nodes_table")
     st.markdown(f"**Edges** ({len(graph.edges)})")
     st.dataframe(edge_rows(graph), hide_index=True, key="graph_edges_table")
 
 
-def render_network(graph: DecisionGraph) -> None:
+def render_network(graph: DecisionGraph, highlight: Sequence[str] = ()) -> None:
     """Draw the network; on any drawing failure, fall back to the tables."""
     try:
-        figure = build_figure(graph, layout(graph))
+        figure = build_figure(graph, layout(graph), highlight)
         st.plotly_chart(figure, key="graph_network")
     except Exception:  # any rendering failure must degrade to tables, never crash the tab
         logger.exception("Network view failed; showing the table fallback")
         st.info(FALLBACK_NOTICE)
-        render_tables(graph)
+        render_tables(graph, highlight)
         return
     st.caption(
         "Hover a node for its detail. Thick lines link decisions to each other; "
@@ -224,7 +255,7 @@ def render_network(graph: DecisionGraph) -> None:
     )
 
 
-def _choose_view(graph: DecisionGraph) -> tuple[DecisionGraph, str]:
+def _choose_view(graph: DecisionGraph, highlight: Sequence[str]) -> tuple[DecisionGraph, str]:
     """Controls for node kinds, focus decision and display mode."""
     available = list(kind_counts(graph))
     if KINDS_KEY not in st.session_state:
@@ -234,8 +265,10 @@ def _choose_view(graph: DecisionGraph) -> tuple[DecisionGraph, str]:
             value for value in st.session_state[KINDS_KEY] if NodeKind(value) in available
         ]
     decisions = {node.id: node.label for node in graph.nodes if node.kind is NodeKind.DECISION}
-    if st.session_state.get(FOCUS_KEY) not in (None, WHOLE_GRAPH, *decisions):
-        st.session_state[FOCUS_KEY] = WHOLE_GRAPH  # focus was on a now-hidden decision
+    focus_options = [WHOLE_GRAPH, *([PRECEDENTS] if highlight else []), *decisions]
+    if st.session_state.get(FOCUS_KEY) not in (None, *focus_options):
+        # focus was on a now-hidden decision, or there are no search results any more
+        st.session_state[FOCUS_KEY] = WHOLE_GRAPH
 
     kinds_col, focus_col, mode_col = st.columns([3, 3, 1])
     with kinds_col:
@@ -248,22 +281,31 @@ def _choose_view(graph: DecisionGraph) -> tuple[DecisionGraph, str]:
     with focus_col:
         focus = st.selectbox(
             "Focus",
-            options=[WHOLE_GRAPH, *decisions],
+            options=focus_options,
             format_func=lambda value: (
-                "Whole graph" if value == WHOLE_GRAPH else f"{value} · {decisions[value]} (1 hop)"
+                "Whole graph"
+                if value == WHOLE_GRAPH
+                else "Search precedents (1 hop)"
+                if value == PRECEDENTS
+                else f"{value} · {decisions[value]} (1 hop)"
             ),
             key=FOCUS_KEY,
         )
     with mode_col:
         mode = st.radio("View", MODES, key=MODE_KEY)
 
-    shown = graph if focus in (None, WHOLE_GRAPH) else neighbourhood(graph, focus)
+    if focus in (None, WHOLE_GRAPH):
+        shown = graph
+    elif focus == PRECEDENTS:
+        shown = neighbourhoods(graph, highlight)
+    else:
+        shown = neighbourhood(graph, focus)
     return filter_kinds(shown, (NodeKind(value) for value in kinds)), mode
 
 
-def render_memory_graph(view: MemoryView) -> None:
-    """The Agent 2 tab."""
-    st.subheader("Agent 2 · Institutional Memory")
+def render_memory_graph(view: MemoryView, highlight: Sequence[str] = ()) -> None:
+    """The decision graph, with search precedents (if any) highlighted."""
+    st.markdown("#### Decision graph")
     st.caption(
         "A projection of the SQLite memory, rebuilt on every view and filtered for the "
         "selected demo role before anything is drawn. Only human-confirmed decisions appear."
@@ -288,12 +330,15 @@ def render_memory_graph(view: MemoryView) -> None:
         + " · ".join(f"{edge_type.value} {count}" for edge_type, count in edge_type_counts(graph).items())
     )
 
-    shown, mode = _choose_view(graph)
+    highlight = [node_id for node_id in highlight if graph.node(node_id) is not None]
+    shown, mode = _choose_view(graph, highlight)
     if not shown.nodes:
         st.info("Nothing to show: choose at least one node kind.")
         return
     st.caption(f"Showing {len(shown.nodes)} nodes and {len(shown.edges)} edges.")
+    if highlight:
+        st.caption("Highlighted search precedents: " + ", ".join(highlight))
     if mode == MODES[0]:
-        render_network(shown)
+        render_network(shown, highlight)
     else:
-        render_tables(shown)
+        render_tables(shown, highlight)

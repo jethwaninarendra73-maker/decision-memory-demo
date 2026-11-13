@@ -263,6 +263,14 @@ def neighbourhood(graph: DecisionGraph, node_id: str, radius: int = 1) -> Decisi
     return _restrict(graph, set(reach))
 
 
+def neighbourhoods(graph: DecisionGraph, node_ids: Iterable[str], radius: int = 1) -> DecisionGraph:
+    """Union of the neighbourhoods of several nodes; unknown IDs contribute nothing."""
+    keep: set[str] = set()
+    for node_id in node_ids:
+        keep |= set(neighbourhood(graph, node_id, radius).node_ids())
+    return _restrict(graph, keep)
+
+
 def layout(graph: DecisionGraph, seed: int = LAYOUT_SEED) -> dict[str, tuple[float, float]]:
     """Deterministic 2-D positions for drawing (spring layout with a fixed seed)."""
     if not graph.nodes:

@@ -1,6 +1,6 @@
 # Implementation Plan — Decision Memory MVP
 
-Status: **Stage 05 complete (Agent 2 Memory graph: role-filtered NetworkX projection, Plotly view, table fallback; 309 tests). Next: Stage 06.**
+Status: **Stage 06 complete (precedent search: transparent four-component ranking, cited results, abstention, graph highlight; 352 tests). Next: Stage 07.**
 Each stage is one Claude Code prompt from the build-prompt pack. Implement ONE stage, get its gate green, commit, then stop.
 
 ## Stages

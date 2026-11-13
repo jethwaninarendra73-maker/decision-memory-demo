@@ -17,7 +17,11 @@ HIDDEN = {"pricing_director": HIDDEN_FROM_DIRECTOR, "analyst": HIDDEN_FROM_ANALY
 
 
 def source_table(app):
-    return app.dataframe[0].value
+    """The evidence explorer's table, picked by its columns (other tabs add tables too)."""
+    (frame,) = [
+        f.value for f in app.dataframe if list(f.value.columns) == ["Source", "Type", "Title", "Date"]
+    ]
+    return frame
 
 
 def test_role_selector_is_labelled_as_a_demo_control(run_app) -> None:
