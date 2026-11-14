@@ -104,6 +104,19 @@ Below the search, the tab draws memory as a network of decisions, outcomes, mark
 - Every edge is typed. Stored relations keep their type (`SUPERSEDES`, `CONTRADICTS`, `SIMILAR_TO`, `INFORMED_BY`, `APPLIES_TO`, `AFFECTS`, `HAS_RISK`, `OWNED_BY`, `INVOLVES`, `PART_OF`). Two more are derived: `SUPPORTED_BY` from a decision or outcome to each source it cites, and `RESULTED_IN` from a decision to its outcome. A graph with an edge to a missing node cannot be built.
 - **Show node kinds** picks what to draw; **Focus** shows one decision and everything one hop from it; **View → Tables** lists every node and edge. The tables also appear automatically if the network cannot be drawn.
 
+## Impact analysis (Agent 3)
+
+Tab **3 · Impact Analysis** takes the question and the precedents from tab 2 and lists what the proposal would touch: affected teams, systems, customer groups and risks, plus an illustrative cost and effort range.
+
+- The **draft proposal** is built from the question: its region, the quarter after the search date (2027-Q1 for 13 Nov 2026), and options +3 / +5 / +7 % for Agent 4 to compare. The one choice is whether to exclude high-volume contract customers. The draft is not saved, and nothing is sent, priced or changed.
+- Every item comes from a rule in `DEFAULT_RULES` (`src/decision_memory/agents/impact_agent.py`). A rule lists terms; it matches a line in a precedent's own sources (the ones its decision and outcome cite) that contains a word starting with one of them. A hyphen joins words, so "dispute" does not match "invoice-dispute".
+- An item is **Source-supported** when at least one line matches, and each precedent's first matching line is quoted with its `[SRC-…]` citation and exact offsets. Each quote says which record cites that source: the decision, the outcome, or both (a source cited by both can hold planning lines as well as results). For teams, lines are taken in document order. For everything else, lines from what happened (the outcome's sources) come before what was planned, and content lines come before headers such as "Reporter:" or "Slide 2:".
+- An item is **Assumed for demo** when a precedent is linked to it in the memory graph but none of its sources mention it. The rationale says so.
+- **Confidence** counts the precedents with a quoted line: 3 or more high, 2 medium, 1 low. Assumptions are always low. It describes the evidence; it never confirms or approves anything.
+- A system, customer group or risk quoted from the outcome of a failed or partial precedent carries a warning. For the demo question that flags high-volume contract customers and competitive response in Germany (from the failed German 6% rollout, DEC-001), billing errors (Italy) and short notice (UK and Ireland).
+- **Cost and effort** are always assumptions: the sum of per-system ranges in `system_estimates` over the affected systems, with the formula shown and amounts to three decimals, exactly as applied. For the demo question they come to $0.20M–$0.35M and 7–12 person-weeks.
+- With no visible precedent, or nothing a rule recognises, the tab shows "Insufficient verifiable evidence." Precedent IDs the role cannot see are ignored exactly like unknown ones. If a quoted line cannot be verified for the role, the whole assessment is withheld with the same message and the rest of the page keeps working.
+
 ## Demo roles and evidence
 
 Pick a **Demo role** in the sidebar: Pricing Director, Analyst or Restricted Executive. The **Evidence explorer** below the stage tabs lists only the sources that role may see, and opens any of them in full. A source can be linked directly, for example `http://localhost:8501/?role=analyst&evidence=SRC-006`.
@@ -175,12 +188,14 @@ src/decision_memory/
   audit.py                  audited capture, review and approval writes
   agents/capture_agent.py   Agent 1: transcript parser and confirm-and-save
   agents/memory_agent.py    Agent 2: role-filtered decision graph (NetworkX projection)
-  agents/                   agents 3 to 6 (stubs until their stage)
+  agents/impact_agent.py    Agent 3: impact rules, quoted evidence, cost and effort ranges
+  agents/                   agents 4 to 6 (stubs until their stage)
   ui/shell.py               banner, sidebar with role selector, six stage tabs
   ui/capture.py             Agent 1 view: transcript, card, review, confirm
   precedent_search.py       transparent precedent ranking with abstention
   ui/search.py              Agent 2 view: question, filters, cited precedents
   ui/memory_graph.py        Agent 2 view: Plotly network with a table fallback
+  ui/impact.py              Agent 3 view: draft proposal, labelled impact items, rules
   ui/evidence.py            evidence explorer and source detail view
 scripts/seed_demo.py        load the baseline
 scripts/reset_demo.py       wipe and rebuild the baseline
@@ -199,6 +214,8 @@ docs/                       product spec and implementation plan
 ## Not available yet
 
 - **Demo reset button**: the sidebar button is still a disabled placeholder; use `python scripts/reset_demo.py`.
-- Agents 3 to 6 and the optional Anthropic mode.
+- Agents 4 to 6 and the optional Anthropic mode.
+- Impact rules match words in source lines. A source that describes an effect in words a rule does not list is missed, and a line that mentions a term only in passing (for example "No competitive response was observed") is still quoted as evidence. Read the quoted lines; the confidence label counts precedents, it does not judge them.
+- The rule table and per-system cost ranges are edited in code (`impact_agent.py`), not in the app.
 - Precedent search matches words, not meaning. The equivalence list covers common pricing wording, but a question phrased in words it does not list can still miss or abstain.
 - Capture reviews one decision per transcript. If a transcript has several `DECISION:` lines, the first is reviewed.

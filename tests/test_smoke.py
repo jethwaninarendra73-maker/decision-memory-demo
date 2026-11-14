@@ -108,10 +108,10 @@ def test_agent_module_imports_and_exposes_info(module_name: str) -> None:
 
 
 def test_stub_entry_point_says_which_stage_builds_it() -> None:
-    from decision_memory.agents import impact_agent
+    from decision_memory.agents import scenario_agent
 
-    with pytest.raises(NotImplementedError, match="Stage 07"):
-        impact_agent.assess_impact("PRO-001", [], "analyst")
+    with pytest.raises(NotImplementedError, match="Stage 08"):
+        scenario_agent.simulate_scenarios()
 
 
 # --- Streamlit shell --------------------------------------------------------

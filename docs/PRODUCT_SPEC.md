@@ -37,7 +37,7 @@ Implemented in `src/decision_memory/models.py` (Stage 02). Every stored record h
 | `KPIUpdate` | `KPI-` | proposal_id, week (1–8, one per week), planned vs actual revenue uplift, planned vs actual churn loss fraction, sla_status, risk_flag, note |
 | `AuditEvent` | `AUD-` | at, actor_label, role, action (`seed` · `capture` · `confirm` · `edit` · `approve` · `reject` · `kpi_update` · `close`), entity_type, entity_id, detail |
 
-`DecisionDraft` (built in Stage 04) is what Agent 1 proposes: the decision fields, a rule-based confidence per field, `flags[]` for anything missing or uncertain, and `evidence[]` with the exact transcript offsets of each value. It is never stored; a reviewer signs off a `ReviewedDecision`, which is saved as a confirmed `Decision`. `ImpactAssessment` (Stage 07) is added with its agent.
+`DecisionDraft` (built in Stage 04) is what Agent 1 proposes: the decision fields, a rule-based confidence per field, `flags[]` for anything missing or uncertain, and `evidence[]` with the exact transcript offsets of each value. It is never stored; a reviewer signs off a `ReviewedDecision`, which is saved as a confirmed `Decision`. `ImpactAssessment` (Stage 07, in `models.py`) holds `ImpactItem`s: category (`team` · `system` · `customer_group` · `risk` · `cost` · `effort`), label, basis (`source_supported` with quoted source lines, or `assumed_for_demo`), rule-based confidence (`low` · `medium` · `high`), rationale, the precedents it came from, an optional warning, and a low-high range with a unit for cost and effort. It is computed for one role and is not stored.
 
 Proposal state machine: `draft → approved → in_progress → completed`, or `draft → rejected`. Any other transition is refused (enforced in Stage 10).
 

@@ -722,3 +722,132 @@ class DecisionGraph(Contract):
     def edges_of(self, node_id: str) -> list[GraphEdge]:
         """Edges that start or end at the node."""
         return [edge for edge in self.edges if node_id in (edge.from_id, edge.to_id)]
+
+
+# --- impact analysis (Agent 3) ----------------------------------------------
+
+
+class ImpactCategory(StrEnum):
+    TEAM = "team"
+    SYSTEM = "system"
+    CUSTOMER_GROUP = "customer_group"
+    RISK = "risk"
+    COST = "cost"
+    EFFORT = "effort"
+
+
+ESTIMATE_CATEGORIES: frozenset[ImpactCategory] = frozenset(
+    {ImpactCategory.COST, ImpactCategory.EFFORT}
+)
+
+
+class Confidence(StrEnum):
+    """Rule-based: how many precedents back an item. It never confirms or approves anything."""
+
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+
+
+class ImpactEvidence(Contract):
+    """One source line behind an impact item, and the precedent it was found through.
+
+    `outcome_verdict` is set when the line is in a source the precedent's outcome cites;
+    `decision_cites` says whether the decision cites that source too. A source cited by
+    both can hold planning lines as well as results, so the two are shown together.
+    """
+
+    decision_id: Annotated[str, Field(pattern=r"^DEC-[A-Z0-9][A-Z0-9-]*$")]
+    outcome_verdict: OutcomeVerdict | None = None
+    decision_cites: bool = True
+    ref: SourceRef
+
+    @model_validator(mode="after")
+    def _cited_by_someone(self) -> ImpactEvidence:
+        if self.outcome_verdict is None and not self.decision_cites:
+            raise ValueError("Evidence must come from a source the decision or its outcome cites")
+        return self
+
+    @property
+    def cited_by(self) -> str:
+        """Which record cites the quoted source, e.g. `decision and outcome (partial)`."""
+        if self.outcome_verdict is None:
+            return "decision"
+        who = "decision and outcome" if self.decision_cites else "outcome"
+        return f"{who} ({self.outcome_verdict.value})"
+
+
+class ImpactItem(Contract):
+    """One team, system, customer group, risk, cost or effort the proposal touches.
+
+    A `source_supported` item quotes at least one source line. Anything else is labelled
+    `assumed_for_demo` and its rationale says why. Cost and effort are always assumptions,
+    given as a low-high range.
+    """
+
+    key: NonEmptyStr
+    category: ImpactCategory
+    label: NonEmptyStr
+    basis: EvidenceBasis
+    confidence: Confidence
+    rationale: NonEmptyStr
+    decision_ids: list[str] = Field(default_factory=list)
+    evidence: list[ImpactEvidence] = Field(default_factory=list)
+    warning: str | None = None
+    exclusion: str | None = None  # the proposal exclusion that would cover this group
+    excluded_by_proposal: bool = False
+    low: Annotated[float, Field(ge=0)] | None = None
+    high: Annotated[float, Field(ge=0)] | None = None
+    unit: str = ""
+
+    @model_validator(mode="after")
+    def _labelled_and_consistent(self) -> ImpactItem:
+        if self.basis is EvidenceBasis.SOURCE_SUPPORTED and not self.evidence:
+            raise ValueError(
+                "A source-supported impact item must quote at least one source line; "
+                "otherwise label it assumed_for_demo"
+            )
+        if self.basis is EvidenceBasis.ASSUMED_FOR_DEMO and self.evidence:
+            raise ValueError("An item with quoted evidence is source_supported, not assumed")
+        if self.category in ESTIMATE_CATEGORIES:
+            if self.basis is not EvidenceBasis.ASSUMED_FOR_DEMO:
+                raise ValueError("Cost and effort ranges are illustrative assumptions")
+            if self.low is None or self.high is None or not self.unit:
+                raise ValueError("Cost and effort need a low-high range and a unit")
+        if self.low is not None and self.high is not None and self.low > self.high:
+            raise ValueError("low must not exceed high")
+        if self.excluded_by_proposal and self.exclusion is None:
+            raise ValueError("Only an item with an exclusion can be excluded by the proposal")
+        return self
+
+    @property
+    def source_refs(self) -> list[SourceRef]:
+        return [evidence.ref for evidence in self.evidence]
+
+
+class ImpactAssessment(Contract):
+    """Agent 3's output for one proposal and one demo role. Advisory; nothing is executed."""
+
+    proposal_id: NonEmptyStr
+    role: Role
+    precedent_ids: list[str] = Field(default_factory=list)
+    items: list[ImpactItem] = Field(default_factory=list)
+    abstained: bool
+    message: NonEmptyStr
+
+    @model_validator(mode="after")
+    def _abstain_means_no_items(self) -> ImpactAssessment:
+        if self.abstained and self.items:
+            raise ValueError("An abstaining assessment lists no impact items")
+        if not self.abstained and not self.items:
+            raise ValueError("An assessment with no items must abstain")
+        keys = [item.key for item in self.items]
+        if len(keys) != len(set(keys)):
+            raise ValueError("Impact item keys must be unique")
+        return self
+
+    def by_category(self, category: ImpactCategory) -> list[ImpactItem]:
+        return [item for item in self.items if item.category is category]
+
+    def item(self, key: str) -> ImpactItem | None:
+        return next((item for item in self.items if item.key == key), None)

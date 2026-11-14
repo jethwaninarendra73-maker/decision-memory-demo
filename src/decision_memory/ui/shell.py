@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import UTC, date, datetime
 
 import streamlit as st
 
@@ -17,9 +17,11 @@ from decision_memory.authz import (
 )
 from decision_memory.config import Settings
 from decision_memory.models import Role
+from decision_memory.precedent_search import SearchResult
 from decision_memory.repository import Repository
 from decision_memory.ui.capture import render_capture
 from decision_memory.ui.evidence import render_evidence_explorer
+from decision_memory.ui.impact import render_impact
 from decision_memory.ui.memory_graph import render_memory_graph
 from decision_memory.ui.search import render_precedent_search
 
@@ -90,7 +92,7 @@ def render_stage_placeholder(agent: AgentInfo) -> None:
     st.info(f"Not built yet. This agent arrives in Stage {agent.build_stage:02d}.")
 
 
-def render_memory_tab(view: MemoryView) -> None:
+def render_memory_tab(view: MemoryView) -> SearchResult | None:
     """Agent 2: ask a question, then see the cited precedents highlighted in the graph."""
     st.subheader("Agent 2 · Institutional Memory")
     result = render_precedent_search(view, date.today())
@@ -100,6 +102,7 @@ def render_memory_tab(view: MemoryView) -> None:
         highlight=result.precedent_ids if result else (),
         lessons=result.cross_region_ids if result else (),
     )
+    return result
 
 
 def render_app(settings: Settings, repo: Repository) -> None:
@@ -111,12 +114,15 @@ def render_app(settings: Settings, repo: Repository) -> None:
     view = MemoryView(repo, role)
 
     tabs = st.tabs([agent.label for agent in AGENTS])
+    search: SearchResult | None = None  # tabs render in order, so search runs first
     for tab, agent in zip(tabs, AGENTS, strict=True):
         with tab:
             if agent.key == "capture":
                 render_capture(repo, view, settings.fixtures_dir)
             elif agent.key == "memory":
-                render_memory_tab(view)
+                search = render_memory_tab(view)
+            elif agent.key == "impact":
+                render_impact(view, search, datetime.now(UTC))
             else:
                 render_stage_placeholder(agent)
 
