@@ -40,8 +40,22 @@ def graph_tables(app) -> str:
     )
 
 
+SCENARIO_TRACES = {"Revenue change", "Margin change"}
+GRAPH_METRICS = {"Decisions", "Outcomes", "Nodes", "Typed edges"}
+
+
 def chart_specs(app) -> list[str]:
-    return [chart.proto.spec for chart in app.get("plotly_chart")]
+    """The graph's Plotly specs (the Scenarios tab draws a chart of its own)."""
+    specs = [chart.proto.spec for chart in app.get("plotly_chart")]
+    return [
+        spec
+        for spec in specs
+        if not {trace.get("name") for trace in json.loads(spec)["data"]} <= SCENARIO_TRACES
+    ]
+
+
+def graph_metrics(app) -> dict[str, str]:
+    return {m.label: m.value for m in app.metric if m.label in GRAPH_METRICS}
 
 
 def as_tables(app):
@@ -60,7 +74,7 @@ def show_all_kinds(app):
 def test_graph_tab_draws_a_network_with_counts(run_app) -> None:
     app = run_app()
     assert not app.exception and not app.error
-    metrics = {metric.label: metric.value for metric in app.metric}
+    metrics = graph_metrics(app)
     assert metrics == {"Decisions": "15", "Outcomes": "14", "Nodes": "94", "Typed edges": "185"}
     (spec,) = chart_specs(app)
     names = {trace.get("name") for trace in json.loads(spec)["data"]}
@@ -74,7 +88,7 @@ def test_graph_tab_draws_a_network_with_counts(run_app) -> None:
 )
 def test_nothing_hidden_reaches_the_chart_or_the_tables(run_app, role, hidden, decisions) -> None:
     app = show_all_kinds(run_app(role=role))
-    assert {m.label: m.value for m in app.metric}["Decisions"] == decisions
+    assert graph_metrics(app)["Decisions"] == decisions
     on_screen = "\n".join([*chart_specs(app), rendered_text(app)])
     tables = as_tables(app)
     on_screen += "\n" + graph_tables(tables) + "\n" + rendered_text(tables)

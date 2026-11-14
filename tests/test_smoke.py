@@ -108,10 +108,10 @@ def test_agent_module_imports_and_exposes_info(module_name: str) -> None:
 
 
 def test_stub_entry_point_says_which_stage_builds_it() -> None:
-    from decision_memory.agents import scenario_agent
+    from decision_memory.agents import recommendation_agent
 
-    with pytest.raises(NotImplementedError, match="Stage 08"):
-        scenario_agent.simulate_scenarios()
+    with pytest.raises(NotImplementedError, match="Stage 09"):
+        recommendation_agent.recommend("PRO-001", "analyst")
 
 
 # --- Streamlit shell --------------------------------------------------------

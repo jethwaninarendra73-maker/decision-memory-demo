@@ -132,4 +132,4 @@ def test_empty_database_shows_how_to_load_the_data(run_app, tmp_path: Path) -> N
     app = run_app(db=tmp_path / "empty.db")
     assert not app.exception
     assert any("python scripts/seed_demo.py" in info.value for info in app.info)
-    assert len(app.dataframe) == 0
+    assert not [f for f in app.dataframe if "Title" in f.value.columns]  # no source table

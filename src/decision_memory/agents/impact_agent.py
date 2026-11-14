@@ -346,6 +346,11 @@ def next_quarter(as_of: date) -> str:
     return f"{year}-Q{quarter}"
 
 
+def surcharge_options(asked_rate: float | None = None) -> list[float]:
+    """The options to compare: +3 / +5 / +7 %, plus the asked rate if it is another one."""
+    return sorted(set(SURCHARGE_OPTIONS) | ({asked_rate} if asked_rate else set()))
+
+
 def draft_proposal(
     question: str,
     region: str | None,
@@ -359,7 +364,7 @@ def draft_proposal(
 ) -> Proposal:
     """An unsaved proposal for the question: next quarter, options +3/+5/+7 % (plus the
     asked rate if it is another one). Nothing is stored or sent."""
-    options = sorted(set(SURCHARGE_OPTIONS) | ({surcharge_rate} if surcharge_rate else set()))
+    options = surcharge_options(surcharge_rate)
     return Proposal(
         id=DRAFT_PROPOSAL_ID,
         question=question,

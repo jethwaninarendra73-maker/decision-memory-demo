@@ -851,3 +851,66 @@ class ImpactAssessment(Contract):
 
     def item(self, key: str) -> ImpactItem | None:
         return next((item for item in self.items if item.key == key), None)
+
+
+# --- scenario simulation (Agent 4) ------------------------------------------
+
+
+class ScenarioInputs(Contract):
+    """Every editable scenario input: shared assumptions plus a churn loss per option.
+
+    Rates and shares are fractions; money is USD millions per quarter. `churn_guardrail`
+    is the churn loss each option is compared with; it does not change any figure.
+    """
+
+    baseline_revenue_musd: Annotated[float, Field(gt=0)]
+    exempt_share: Fraction
+    contribution_margin: Fraction
+    implementation_cost_musd: Annotated[float, Field(ge=0)]
+    churn_guardrail: Fraction
+    churn_loss_by_rate: Annotated[dict[Fraction, Fraction], Field(min_length=1)]
+
+    @model_validator(mode="after")
+    def _options_distinct(self) -> ScenarioInputs:
+        basis_points = {round(rate * 10_000) for rate in self.churn_loss_by_rate}
+        if len(basis_points) != len(self.churn_loss_by_rate):
+            raise ValueError("Surcharge options must differ by at least 0.01 percentage points")
+        return self
+
+    @property
+    def rates(self) -> list[float]:
+        return sorted(self.churn_loss_by_rate)
+
+    def assumptions(self, rate: float) -> ScenarioAssumptions:
+        """The `ScenarioAssumptions` for one option. Raises KeyError for an unknown rate."""
+        return ScenarioAssumptions(
+            baseline_revenue_musd=self.baseline_revenue_musd,
+            exempt_share=self.exempt_share,
+            churn_loss_fraction=self.churn_loss_by_rate[rate],
+            contribution_margin=self.contribution_margin,
+            implementation_cost_musd=self.implementation_cost_musd,
+        )
+
+
+class AssumptionNote(Contract):
+    """Where one scenario input comes from: cited sources, or a labelled demo assumption.
+
+    An assumption may still carry sources as context, shown as such.
+    """
+
+    key: NonEmptyStr
+    label: NonEmptyStr
+    value: float
+    display: NonEmptyStr
+    basis: EvidenceBasis
+    rationale: NonEmptyStr
+    source_refs: list[SourceRef] = Field(default_factory=list)
+    edited: bool = False
+
+    @model_validator(mode="after")
+    def _supported_notes_cite_sources(self) -> AssumptionNote:
+        if self.basis is EvidenceBasis.SOURCE_SUPPORTED and not self.source_refs:
+            raise ValueError("A source-supported assumption must cite at least one excerpt")
+        if self.edited and self.basis is EvidenceBasis.SOURCE_SUPPORTED:
+            raise ValueError("An edited value is no longer what its source says")
+        return self

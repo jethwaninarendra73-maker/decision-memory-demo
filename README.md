@@ -117,6 +117,22 @@ Tab **3 · Impact Analysis** takes the question and the precedents from tab 2 an
 - **Cost and effort** are always assumptions: the sum of per-system ranges in `system_estimates` over the affected systems, with the formula shown and amounts to three decimals, exactly as applied. For the demo question they come to $0.20M–$0.35M and 7–12 person-weeks.
 - With no visible precedent, or nothing a rule recognises, the tab shows "Insufficient verifiable evidence." Precedent IDs the role cannot see are ignored exactly like unknown ones. If a quoted line cannot be verified for the role, the whole assessment is withheld with the same message and the rest of the page keeps working.
 
+## Scenario simulation (Agent 4)
+
+Tab **4 · Scenario Simulation** compares the proposal's options (+3 / +5 / +7 %, plus the asked rate if it is another one) with two formulas, shown on the tab:
+
+```
+revenue_change = baseline × rate × (1 − exempt_share) − baseline × churn_loss_fraction
+margin_change  = revenue_change × contribution_margin − implementation_cost
+```
+
+- Every input is editable: baseline revenue (USD M per quarter), exempt share, contribution margin, implementation cost, a churn loss per option, and the churn guardrail. Each edit recomputes every figure; **Restore default inputs** puts the defaults back. Percentages are kept to three decimals and money to two: a value typed with more is rounded to what its box shows, and that is the value applied. No headline figure is stored anywhere.
+- With the defaults the options come to +$8.4M / +$14.0M / +$18.8M revenue and +$5.58M / +$9.50M / +$12.86M margin a quarter. For +5%: $400M × 5% × 90% = $18M, minus $400M × 1% = $4M, gives $14M; × 70% − $0.3M gives $9.5M.
+- Each option shows its formula with the numbers filled in, a revenue retention proxy (1 − churn loss fraction, labelled as a proxy, not customer retention), SLA "unchanged / not modeled", and whether its churn loss is within the guardrail. The guardrail is only compared here; it changes no figure. Agent 5 applies it.
+- **Where the inputs come from** labels each one. Four defaults are stated in fixture sources and cite them: exempt share 10% ("roughly a tenth", SRC-022), churn guardrail 1.2% (SRC-014), churn loss 0.6% at +3% (SRC-004, SRC-015) and 1.0% at +5% (SRC-006, SRC-011). Baseline revenue, contribution margin, implementation cost and the 1.6% churn loss at +7% are assumed for demo; the +7% note shows Iberia's planned and actual churn as context, not support. An edited value becomes an assumption and drops its citation. An asked rate without a default (say +4%) gets a churn loss read off the straight lines between the defaults, labelled as such.
+- The tab notes when the exempt share and the draft proposal in tab 3 disagree: a non-zero exempt share while the proposal does not exclude contract customers, or a 0% exempt share while it does.
+- Results are computed for display and are not stored.
+
 ## Demo roles and evidence
 
 Pick a **Demo role** in the sidebar: Pricing Director, Analyst or Restricted Executive. The **Evidence explorer** below the stage tabs lists only the sources that role may see, and opens any of them in full. A source can be linked directly, for example `http://localhost:8501/?role=analyst&evidence=SRC-006`.
@@ -189,13 +205,15 @@ src/decision_memory/
   agents/capture_agent.py   Agent 1: transcript parser and confirm-and-save
   agents/memory_agent.py    Agent 2: role-filtered decision graph (NetworkX projection)
   agents/impact_agent.py    Agent 3: impact rules, quoted evidence, cost and effort ranges
-  agents/                   agents 4 to 6 (stubs until their stage)
+  agents/scenario_agent.py  Agent 4: pure scenario formulas, defaults and their sources
+  agents/                   agents 5 and 6 (stubs until their stage)
   ui/shell.py               banner, sidebar with role selector, six stage tabs
   ui/capture.py             Agent 1 view: transcript, card, review, confirm
   precedent_search.py       transparent precedent ranking with abstention
   ui/search.py              Agent 2 view: question, filters, cited precedents
   ui/memory_graph.py        Agent 2 view: Plotly network with a table fallback
   ui/impact.py              Agent 3 view: draft proposal, labelled impact items, rules
+  ui/scenarios.py           Agent 4 view: editable inputs, formulas, per-option results
   ui/evidence.py            evidence explorer and source detail view
 scripts/seed_demo.py        load the baseline
 scripts/reset_demo.py       wipe and rebuild the baseline
@@ -214,7 +232,7 @@ docs/                       product spec and implementation plan
 ## Not available yet
 
 - **Demo reset button**: the sidebar button is still a disabled placeholder; use `python scripts/reset_demo.py`.
-- Agents 4 to 6 and the optional Anthropic mode.
+- Agents 5 and 6 and the optional Anthropic mode.
 - Impact rules match words in source lines. A source that describes an effect in words a rule does not list is missed, and a line that mentions a term only in passing (for example "No competitive response was observed") is still quoted as evidence. Read the quoted lines; the confidence label counts precedents, it does not judge them.
 - The rule table and per-system cost ranges are edited in code (`impact_agent.py`), not in the app.
 - Precedent search matches words, not meaning. The equivalence list covers common pricing wording, but a question phrased in words it does not list can still miss or abstain.

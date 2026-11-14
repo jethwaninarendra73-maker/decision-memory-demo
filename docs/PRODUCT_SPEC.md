@@ -79,7 +79,7 @@ revenue_change = baseline × surcharge × (1 − exempt_share) − baseline × c
 margin_change  = revenue_change × contribution_margin − implementation_cost
 ```
 
-Defaults: baseline $400M/quarter, exempt_share 10%, churn_loss_fraction 0.6% / 1.0% / 1.6% for +3 / +5 / +7 %, contribution_margin 70%, implementation_cost $0.3M.
+Defaults: baseline $400M/quarter, exempt_share 10%, churn_loss_fraction 0.6% / 1.0% / 1.6% for +3 / +5 / +7 %, contribution_margin 70%, implementation_cost $0.3M. Implemented in `src/decision_memory/agents/scenario_agent.py` (Stage 08). The inputs are a `ScenarioInputs` contract; `AssumptionNote`s say which defaults are stated in fixture sources (exempt share SRC-022, guardrail SRC-014, churn at +3% SRC-004/SRC-015, at +5% SRC-006/SRC-011) and which are `assumed_for_demo` (baseline, contribution margin, implementation cost, churn at +7%).
 
 | Option | Revenue change | Margin change | Churn loss vs 1.2% guardrail |
 |--------|---------------|---------------|-------------------------------|

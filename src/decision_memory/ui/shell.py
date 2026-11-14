@@ -16,13 +16,14 @@ from decision_memory.authz import (
     parse_role,
 )
 from decision_memory.config import Settings
-from decision_memory.models import Role
+from decision_memory.models import Proposal, Role
 from decision_memory.precedent_search import SearchResult
 from decision_memory.repository import Repository
 from decision_memory.ui.capture import render_capture
 from decision_memory.ui.evidence import render_evidence_explorer
 from decision_memory.ui.impact import render_impact
 from decision_memory.ui.memory_graph import render_memory_graph
+from decision_memory.ui.scenarios import render_scenarios
 from decision_memory.ui.search import render_precedent_search
 
 ROLE_KEY = "demo_role"
@@ -115,6 +116,8 @@ def render_app(settings: Settings, repo: Repository) -> None:
 
     tabs = st.tabs([agent.label for agent in AGENTS])
     search: SearchResult | None = None  # tabs render in order, so search runs first
+    proposal: Proposal | None = None
+    now = datetime.now(UTC)
     for tab, agent in zip(tabs, AGENTS, strict=True):
         with tab:
             if agent.key == "capture":
@@ -122,7 +125,9 @@ def render_app(settings: Settings, repo: Repository) -> None:
             elif agent.key == "memory":
                 search = render_memory_tab(view)
             elif agent.key == "impact":
-                render_impact(view, search, datetime.now(UTC))
+                proposal, _ = render_impact(view, search, now)
+            elif agent.key == "scenario":
+                render_scenarios(view, proposal, now)
             else:
                 render_stage_placeholder(agent)
 

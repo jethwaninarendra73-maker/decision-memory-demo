@@ -175,12 +175,13 @@ def render_impact(
     result: SearchResult | None,
     now: datetime,
     rules: ImpactRules = DEFAULT_RULES,
-) -> ImpactAssessment | None:
-    """Agent 3 tab. Returns the assessment shown, or None when there is no search yet."""
+) -> tuple[Proposal | None, ImpactAssessment | None]:
+    """Agent 3 tab. Returns the draft proposal and the assessment shown (None when there is
+    no search yet, or when the assessment was withheld)."""
     st.subheader("Agent 3 · Impact Analysis")
     if result is None:
         st.info(NO_SEARCH_MESSAGE if view.decisions() else NOTHING_TO_ASSESS)
-        return None
+        return None, None
     proposal = render_proposal(result, now, view)
     assessment = assess_impact(view, proposal, result.precedent_ids, rules)
     try:
@@ -188,11 +189,11 @@ def render_impact(
     except InaccessibleEvidenceError:
         # Fail closed: show nothing from the refused assessment and keep the page running.
         st.warning(REFUSED_MESSAGE)
-        return None
+        return proposal, None
 
     if assessment.abstained:
         st.warning(assessment.message)
-        return assessment
+        return proposal, assessment
     st.markdown(f"{assessment.message} Precedents used: {', '.join(assessment.precedent_ids)}.")
     st.caption(METHOD_NOTE)
     st.dataframe(item_rows(assessment), hide_index=True)
@@ -209,4 +210,4 @@ def render_impact(
         st.caption("Edit `DEFAULT_RULES` in src/decision_memory/agents/impact_agent.py.")
         st.dataframe(rule_rows(rules), hide_index=True)
         st.dataframe(estimate_rows(rules), hide_index=True)
-    return assessment
+    return proposal, assessment

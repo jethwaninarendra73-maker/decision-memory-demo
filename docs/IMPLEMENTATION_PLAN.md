@@ -1,6 +1,6 @@
 # Implementation Plan — Decision Memory MVP
 
-Status: **Stage 07 complete (impact analysis: rule-driven teams, systems, customer groups and risks quoted from precedent sources, graph-only links labelled assumed_for_demo, illustrative cost and effort ranges; 426 tests). Next: Stage 08.**
+Status: **Stage 08 complete (scenario simulation: pure formulas, editable inputs recomputed on every change, defaults give +$8.4M / +$14.0M / +$18.8M revenue and +$5.58M / +$9.50M / +$12.86M margin, each default cited or labelled assumed_for_demo; 466 tests). Next: Stage 09.**
 Each stage is one Claude Code prompt from the build-prompt pack. Implement ONE stage, get its gate green, commit, then stop.
 
 ## Stages
