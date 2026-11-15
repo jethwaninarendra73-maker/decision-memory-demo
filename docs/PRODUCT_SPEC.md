@@ -87,7 +87,7 @@ Defaults: baseline $400M/quarter, exempt_share 10%, churn_loss_fraction 0.6% / 1
 | +5% | +$14.0M | +$9.50M | 1.0% — passes |
 | +7% | +$18.8M | +$12.86M | 1.6% — **fails** |
 
-Recommendation rule: drop options that breach the churn guardrail (≤ 1.2% of baseline) or lack adequate evidence; require explicit exclusion of high-volume contract customers; among remaining options pick the highest revenue upside. Default result: **phased +5% pilot** in two markets, weekly revenue/churn KPI checks, executive review after 60 days, named human approver required.
+Recommendation rule: drop options that breach the churn guardrail (≤ 1.2% of baseline) or lack adequate evidence; require explicit exclusion of high-volume contract customers; among remaining options pick the highest revenue upside. Default result: **phased +5% pilot** in two markets, weekly revenue/churn KPI checks, executive review after 60 days, named human approver required. Implemented in `src/decision_memory/agents/recommendation_agent.py` (Stage 09). "Adequate evidence" means at least one visible precedent within ±0.5 points of the option's rate with a success outcome; partial and failed precedents near a rate are cautions. The phased-pilot threshold (above 3%), weekly checks and 60-day review are cited from SRC-014, the contract-customer exclusion from SRC-022; the two-market scope is a labelled demo setting. Agent 4 hands over a `ScenarioSet` (inputs, results, input notes); Agent 5 returns a `RecommendationResult` with an `OptionCheck` per option.
 
 ## 5. Five-minute demo outline
 

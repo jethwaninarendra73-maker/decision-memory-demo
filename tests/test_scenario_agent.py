@@ -23,6 +23,7 @@ from decision_memory.agents.scenario_agent import (
     margin_change,
     retention_proxy,
     revenue_change,
+    scenario_set,
     simulate_scenarios,
     within_guardrail,
 )
@@ -32,6 +33,7 @@ from decision_memory.models import (
     EvidenceBasis,
     Role,
     ScenarioInputs,
+    ScenarioSet,
 )
 from decision_memory.provenance import resolve_all
 from decision_memory.repository import Repository
@@ -246,3 +248,39 @@ def test_note_contract() -> None:
         AssumptionNote(**base, basis=EvidenceBasis.SOURCE_SUPPORTED)
     note = AssumptionNote(**base, basis=EvidenceBasis.ASSUMED_FOR_DEMO, edited=True)
     assert math.isclose(note.value, 1.0)
+
+
+# --- the bundle later agents read -------------------------------------------------
+
+
+def test_scenario_set_bundles_results_and_notes_from_one_set_of_inputs(
+    seeded: Repository,
+) -> None:
+    view = MemoryView(seeded, Role.ANALYST)
+    inputs = edit(exempt_share=0.2)
+    bundle = scenario_set(view, inputs, "PRO-DRAFT", NOW)
+    assert bundle.inputs == inputs
+    assert bundle.results == simulate_scenarios(inputs, "PRO-DRAFT", NOW)
+    assert bundle.notes == assumption_notes(view, inputs)
+    assert bundle.note("exempt_share").edited and bundle.note("nope") is None
+    assert bundle.note("churn_guardrail").value == inputs.churn_guardrail
+
+
+def test_scenario_set_refuses_results_or_notes_that_do_not_match_its_inputs(
+    seeded: Repository,
+) -> None:
+    view = MemoryView(seeded, Role.ANALYST)
+    good = scenario_set(view, DEFAULT_INPUTS, "PRO-DRAFT", NOW)
+    other = edit(churn_loss_by_rate={0.03: 0.006, 0.05: 0.03, 0.07: 0.016})
+    with pytest.raises(ValidationError, match="not computed from these inputs"):
+        ScenarioSet(
+            inputs=DEFAULT_INPUTS,
+            results=simulate_scenarios(other, "PRO-DRAFT", NOW),
+            notes=good.notes,
+        )
+    with pytest.raises(ValidationError, match="exactly one result per option"):
+        ScenarioSet(inputs=DEFAULT_INPUTS, results=good.results[:2], notes=good.notes)
+    with pytest.raises(ValidationError, match="must describe the churn guardrail"):
+        ScenarioSet(inputs=edit(churn_guardrail=0.02), results=good.results, notes=good.notes)
+    with pytest.raises(ValidationError, match="keys must be unique"):
+        ScenarioSet(inputs=DEFAULT_INPUTS, results=good.results, notes=[*good.notes, good.notes[0]])

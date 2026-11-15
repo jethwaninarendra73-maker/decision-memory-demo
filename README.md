@@ -133,6 +133,26 @@ margin_change  = revenue_change × contribution_margin − implementation_cost
 - The tab notes when the exempt share and the draft proposal in tab 3 disagree: a non-zero exempt share while the proposal does not exclude contract customers, or a 0% exempt share while it does.
 - Results are computed for display and are not stored.
 
+## Recommendation (Agent 5)
+
+Tab **5 · Recommendation** turns the precedents (tab 2), the impact analysis (tab 3) and the scenarios (tab 4) into one advisory card. It never executes, sends or stores anything; a named Pricing Director must approve.
+
+- **Rules** (`DEFAULT_RULES` in `src/decision_memory/agents/recommendation_agent.py`). Each option must pass all three:
+  1. its churn loss is within the churn guardrail from tab 4;
+  2. at least one visible precedent within ±0.5 points of its rate was a **success**;
+  3. its revenue change is positive.
+
+  The eligible option with the highest revenue change is recommended (the lower rate on a tie). Above +3% it is a **phased pilot**, otherwise it may proceed.
+- **Cautions, not support.** A partial or failed precedent near a rate never backs it. It is shown as a caution and raises the risk level.
+- **Abstaining.** With no visible precedent, or no option backed by one, the tab says "Insufficient evidence to recommend." If options are backed but each one exceeds the guardrail or has no upside, it says "Do not proceed".
+- **Demo question:** phased pilot at +5%, risk medium. France (DEC-004) is the successful precedent; the UK and Italy 5% surcharges (both partial) are cautions. +7% is excluded because its 1.6% churn loss exceeds the 1.2% guardrail, and none of the precedents found for the question is a success near that rate. +3% is eligible but has the lower uplift (+$8.40M against +$14.00M).
+- **Every reason cites a source the role can see:** the precedent and the cautions, the guardrail (SRC-014), the phased-pilot policy (SRC-014), the contract-customer exclusion policy (SRC-022), and the key risks. Key risks are impact risks quoted from a failed precedent with at least medium confidence: for the demo, churn among high-volume contract customers and competitive response in Germany. Each key risk cites only the lines from the failed precedent it names.
+- **Assumptions are listed apart from reasons:** the computed figures, every input that is assumed for demo, and demo settings such as the two-market pilot scope and the ±0.5-point evidence rule. An edited guardrail stops being a cited reason and appears here. A policy whose source the role cannot see is applied as a labelled demo rule, not cited.
+- **Condition.** The recommendation holds only if high-volume contract customers are excluded. The card says whether the draft proposal in tab 3 already excludes them.
+- **Risk level** is rule-based: high if a precedent near the chosen rate failed; medium if one was partial, a key risk exists or there is no impact analysis; low otherwise.
+- The **action plan** is for the approver and ends with the approval requirement. For a pilot it tracks the churn loss share, which does not depend on scale; the scenario revenue figures cover the whole baseline, so the plan says to scale them to the pilot markets and lists that as an assumption. **How each option was judged** lists every option with its verdict, successful precedents and cautions.
+- The recommendation is checked with `verify_recommendation` for the active role before it is shown. If a citation cannot be verified, nothing from it is shown. It is not stored; Agent 6 records the approval.
+
 ## Demo roles and evidence
 
 Pick a **Demo role** in the sidebar: Pricing Director, Analyst or Restricted Executive. The **Evidence explorer** below the stage tabs lists only the sources that role may see, and opens any of them in full. A source can be linked directly, for example `http://localhost:8501/?role=analyst&evidence=SRC-006`.
@@ -206,7 +226,8 @@ src/decision_memory/
   agents/memory_agent.py    Agent 2: role-filtered decision graph (NetworkX projection)
   agents/impact_agent.py    Agent 3: impact rules, quoted evidence, cost and effort ranges
   agents/scenario_agent.py  Agent 4: pure scenario formulas, defaults and their sources
-  agents/                   agents 5 and 6 (stubs until their stage)
+  agents/recommendation_agent.py  Agent 5: option rules, cited reasons, action plan
+  agents/                   agent 6 (stub until its stage)
   ui/shell.py               banner, sidebar with role selector, six stage tabs
   ui/capture.py             Agent 1 view: transcript, card, review, confirm
   precedent_search.py       transparent precedent ranking with abstention
@@ -214,6 +235,7 @@ src/decision_memory/
   ui/memory_graph.py        Agent 2 view: Plotly network with a table fallback
   ui/impact.py              Agent 3 view: draft proposal, labelled impact items, rules
   ui/scenarios.py           Agent 4 view: editable inputs, formulas, per-option results
+  ui/recommendation.py      Agent 5 view: advisory card, condition, option verdicts
   ui/evidence.py            evidence explorer and source detail view
 scripts/seed_demo.py        load the baseline
 scripts/reset_demo.py       wipe and rebuild the baseline
@@ -232,7 +254,8 @@ docs/                       product spec and implementation plan
 ## Not available yet
 
 - **Demo reset button**: the sidebar button is still a disabled placeholder; use `python scripts/reset_demo.py`.
-- Agents 5 and 6 and the optional Anthropic mode.
+- Agent 6 (approval, tracking and outcome write-back) and the optional Anthropic mode.
+- The recommendation uses only the precedents search returned for the question, and its verdicts say so ("among those found for this question"). A relevant decision outside that list does not count: the failed 7% surcharge in Iberia does not appear as a caution for the demo question, and a question asked at 4% does not find France's successful 5%, so +5% is excluded there and +4% is recommended.
 - Impact rules match words in source lines. A source that describes an effect in words a rule does not list is missed, and a line that mentions a term only in passing (for example "No competitive response was observed") is still quoted as evidence. Read the quoted lines; the confidence label counts precedents, it does not judge them.
 - The rule table and per-system cost ranges are edited in code (`impact_agent.py`), not in the app.
 - Precedent search matches words, not meaning. The equivalence list covers common pricing wording, but a question phrased in words it does not list can still miss or abstain.

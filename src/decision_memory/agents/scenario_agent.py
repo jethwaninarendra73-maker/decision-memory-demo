@@ -28,6 +28,7 @@ from ..models import (
     ScenarioAssumptions,
     ScenarioInputs,
     ScenarioResult,
+    ScenarioSet,
     SourceRef,
 )
 from .base import AgentInfo
@@ -355,3 +356,14 @@ def assumption_notes(
         else:
             notes.append(_note(view, key, label, value, display, default))
     return notes
+
+
+def scenario_set(
+    view: MemoryView, inputs: ScenarioInputs, proposal_id: str, now: datetime
+) -> ScenarioSet:
+    """Results and input notes computed together from one set of inputs. Not stored."""
+    return ScenarioSet(
+        inputs=inputs,
+        results=simulate_scenarios(inputs, proposal_id, now),
+        notes=assumption_notes(view, inputs),
+    )

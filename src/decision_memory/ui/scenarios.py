@@ -20,11 +20,10 @@ from decision_memory.agents.scenario_agent import (
     RETENTION_PROXY_NOTE,
     REVENUE_FORMULA,
     SLA_NOT_MODELED,
-    assumption_notes,
     churn_label,
     default_inputs,
     retention_proxy,
-    simulate_scenarios,
+    scenario_set,
     within_guardrail,
 )
 from decision_memory.authz import MemoryView
@@ -34,6 +33,7 @@ from decision_memory.models import (
     Proposal,
     ScenarioInputs,
     ScenarioResult,
+    ScenarioSet,
 )
 from decision_memory.precedent_search import format_setting
 from decision_memory.provenance import resolve_ref
@@ -251,10 +251,8 @@ def render_note(view: MemoryView, note: AssumptionNote) -> None:
             st.markdown(f"- {prefix}: {cited.format_markdown()}")
 
 
-def render_scenarios(
-    view: MemoryView, proposal: Proposal | None, now: datetime
-) -> list[ScenarioResult]:
-    """Agent 4 tab. Returns the computed results (not stored)."""
+def render_scenarios(view: MemoryView, proposal: Proposal | None, now: datetime) -> ScenarioSet:
+    """Agent 4 tab. Returns the inputs, computed results and input notes (not stored)."""
     st.subheader("Agent 4 · Scenario Simulation")
     st.caption(ILLUSTRATION_NOTE)
     rates = proposal.surcharge_options if proposal is not None else list(SURCHARGE_OPTIONS)
@@ -262,7 +260,8 @@ def render_scenarios(
     if proposal is not None:
         render_exclusion_check(proposal, inputs)
 
-    results = simulate_scenarios(inputs, proposal.id if proposal else SCENARIO_PROPOSAL_ID, now)
+    scenarios = scenario_set(view, inputs, proposal.id if proposal else SCENARIO_PROPOSAL_ID, now)
+    results = scenarios.results
     st.markdown("**Formulas** (USD M per quarter; rates and shares as fractions)")
     st.code(f"{REVENUE_FORMULA}\n{MARGIN_FORMULA}", language=None)
 
@@ -279,6 +278,6 @@ def render_scenarios(
     st.plotly_chart(build_chart(results), key="scenario_chart")
 
     with st.expander("Where the inputs come from", expanded=True):
-        for note in assumption_notes(view, inputs):
+        for note in scenarios.notes:
             render_note(view, note)
-    return results
+    return scenarios

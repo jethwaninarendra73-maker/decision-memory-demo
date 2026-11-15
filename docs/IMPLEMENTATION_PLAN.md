@@ -1,6 +1,6 @@
 # Implementation Plan — Decision Memory MVP
 
-Status: **Stage 08 complete (scenario simulation: pure formulas, editable inputs recomputed on every change, defaults give +$8.4M / +$14.0M / +$18.8M revenue and +$5.58M / +$9.50M / +$12.86M margin, each default cited or labelled assumed_for_demo; 466 tests). Next: Stage 09.**
+Status: **Stage 09 complete (recommendation: guardrail, evidence and upside rules per option; default is a phased +5% pilot, +7% excluded by the 1.2% churn guardrail, +3% noted as lower uplift; every reason cited, assumptions listed apart; no evidence gives "Insufficient evidence to recommend"; 520 tests). Next: Stage 10.**
 Each stage is one Claude Code prompt from the build-prompt pack. Implement ONE stage, get its gate green, commit, then stop.
 
 ## Stages

@@ -914,3 +914,95 @@ class AssumptionNote(Contract):
         if self.edited and self.basis is EvidenceBasis.SOURCE_SUPPORTED:
             raise ValueError("An edited value is no longer what its source says")
         return self
+
+
+class ScenarioSet(Contract):
+    """Agent 4's output as one consistent bundle: the inputs, one result per option, and
+    where each input comes from. Later agents read this, so results can never be paired
+    with inputs they were not computed from."""
+
+    inputs: ScenarioInputs
+    results: Annotated[list[ScenarioResult], Field(min_length=1)]
+    notes: list[AssumptionNote]
+
+    @model_validator(mode="after")
+    def _results_match_inputs(self) -> ScenarioSet:
+        if [r.surcharge_rate for r in self.results] != self.inputs.rates:
+            raise ValueError("There must be exactly one result per option, lowest rate first")
+        for result in self.results:
+            if result.assumptions != self.inputs.assumptions(result.surcharge_rate):
+                raise ValueError("A result was not computed from these inputs")
+        keys = [note.key for note in self.notes]
+        if len(keys) != len(set(keys)):
+            raise ValueError("Assumption note keys must be unique")
+        guardrail = self.note("churn_guardrail")
+        if guardrail is None or guardrail.value != self.inputs.churn_guardrail:
+            raise ValueError("The notes must describe the churn guardrail in the inputs")
+        return self
+
+    def note(self, key: str) -> AssumptionNote | None:
+        return next((note for note in self.notes if note.key == key), None)
+
+
+# --- recommendation (Agent 5) -----------------------------------------------
+
+
+class OptionCheck(Contract):
+    """How one surcharge option fared against the recommendation rules.
+
+    An option is eligible only if its churn loss is within the guardrail, at least one
+    successful precedent near its rate backs it, and its revenue change is positive.
+    """
+
+    surcharge_rate: Fraction
+    revenue_change_musd: float
+    margin_change_musd: float
+    churn_loss_fraction: Fraction
+    within_guardrail: bool
+    has_upside: bool
+    supporting_decision_ids: list[str] = Field(default_factory=list)
+    caution_decision_ids: list[str] = Field(default_factory=list)
+    eligible: bool
+    chosen: bool = False
+    verdict: NonEmptyStr
+
+    @model_validator(mode="after")
+    def _eligibility_follows_the_rules(self) -> OptionCheck:
+        passes = self.within_guardrail and self.has_upside and bool(self.supporting_decision_ids)
+        if self.eligible != passes:
+            raise ValueError(
+                "eligible must equal: within guardrail, positive upside and a backing precedent"
+            )
+        if self.chosen and not self.eligible:
+            raise ValueError("Only an eligible option can be chosen")
+        return self
+
+
+class RecommendationResult(Contract):
+    """Agent 5's output: the advisory recommendation, how every option was judged, and
+    whether the proposal already meets the exclusion the recommendation requires."""
+
+    recommendation: Recommendation
+    options: list[OptionCheck] = Field(default_factory=list)
+    precedent_ids: list[str] = Field(default_factory=list)
+    required_exclusion: str | None = None
+    exclusion_in_proposal: bool = False
+    message: NonEmptyStr
+
+    @model_validator(mode="after")
+    def _consistent(self) -> RecommendationResult:
+        rec = self.recommendation
+        chosen = [option.surcharge_rate for option in self.options if option.chosen]
+        if len(chosen) > 1:
+            raise ValueError("At most one option is chosen")
+        if chosen != ([] if rec.recommended_rate is None else [rec.recommended_rate]):
+            raise ValueError("The chosen option must be the recommended rate")
+        advises_a_rate = rec.decision_type in (
+            RecommendationType.PHASED_PILOT,
+            RecommendationType.PROCEED,
+        )
+        if advises_a_rate != (rec.recommended_rate is not None):
+            raise ValueError("Only a pilot or proceed recommendation names a rate")
+        if advises_a_rate and not rec.reasons:
+            raise ValueError("A recommendation to act must give cited reasons")
+        return self

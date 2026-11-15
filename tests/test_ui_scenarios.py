@@ -37,7 +37,7 @@ def metric_values(app, label: str) -> list[str]:
 
 
 def scenario_table(app):
-    (table,) = [f.value for f in app.dataframe if "Revenue change" in f.value.columns]
+    (table,) = [f.value for f in app.dataframe if "Gross uplift" in f.value.columns]
     return table
 
 
