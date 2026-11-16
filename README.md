@@ -4,7 +4,7 @@
 
 An offline-first Streamlit app that walks a Pricing Director through one question, *"Should we increase the freight surcharge by 5% for European customers next quarter?"*, using six logical agents: Decision Capture, Institutional Memory, Impact Analysis, Scenario Simulation, Recommendation and Governance.
 
-**Build status: Stage 12 of 15.** All six agents work end to end. Agent 1 captures a decision from a synthetic transcript. Agent 2 answers the question with ranked, cited precedents and a decision graph. Agents 3 to 5 assess impact, compare +3/+5/+7% and recommend a guarded option. Agent 6 records a simulated approval, tracks the pilot for 60 days and writes its outcome back to memory. Everything is filtered for the selected demo role, cited, and audited. A guided panel walks a presenter through the five-minute demo. An optional Anthropic mode can reword the recommendation into a checked plain-language brief; everything else stays deterministic. The demo kit comes in a later stage. See [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md).
+**Build status: Stage 13 of 15.** All six agents work end to end. Agent 1 captures a decision from a synthetic transcript. Agent 2 answers the question with ranked, cited precedents and a decision graph. Agents 3 to 5 assess impact, compare +3/+5/+7% and recommend a guarded option. Agent 6 records a simulated approval, tracks the pilot for 60 days and writes its outcome back to memory. Everything is filtered for the selected demo role, cited, and audited. A guided panel walks a presenter through the five-minute demo. An optional Anthropic mode can reword the recommendation into a checked plain-language brief; everything else stays deterministic. The QA results are in [docs/QA_REPORT.md](docs/QA_REPORT.md); the demo kit comes in a later stage. See [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md).
 
 ## Requirements
 
@@ -224,7 +224,18 @@ source .venv/bin/activate
 python -m pytest
 ```
 
-Tests use temporary databases and never touch `data/demo.db`.
+The whole suite runs offline, with no API key, on temporary databases. Three guards in `tests/conftest.py` enforce that for every test:
+
+- **No network:** a connection or name lookup to any other host fails the test. This covers the test process; the server test's `streamlit run` subprocess is started offline, with no key and usage statistics off.
+- **No key:** the app runs offline even if your `.env` holds a key.
+- **No demo data changed:** `data/demo.db` must be byte-identical after the run.
+
+```bash
+python -m pytest tests/test_e2e.py      # end-to-end: the five-minute demo, role journeys, a hostile document, the server
+python -m pytest tests/test_safety.py   # no outbound code, no raw HTML, no secrets or generated data in the repo
+```
+
+The results, the acceptance-criteria matrix and the manual checks are in [docs/QA_REPORT.md](docs/QA_REPORT.md). A full run takes about 1 to 1.5 minutes. One test (SDK error classes) is skipped when the optional `anthropic` package is not installed.
 
 Linting is optional. Ruff is not in the requirements; install it into the virtual environment if you want it. Settings are in [ruff.toml](ruff.toml).
 

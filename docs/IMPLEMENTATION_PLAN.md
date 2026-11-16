@@ -1,6 +1,6 @@
 # Implementation Plan — Decision Memory MVP
 
-Status: **Stage 12 complete (optional Anthropic mode behind LLM_MODE + key + optional package: the model only rewords tab 5's cited reasons into a plain-language brief on request, accepted only if every sentence cites the card's sources and adds no number; every failure falls back to the offline brief with a notice; offline mode unchanged; fake clients only; review fixes: numbers checked against the reasons each sentence cites, reviewer notes kept out of the prompt, the answering model named; 682 tests, 681 + 1 skipped without the package). Next: Stage 13.**
+Status: **Stage 13 complete (QA: suite-wide guards for no network, no key and an untouched data/demo.db; end-to-end harness for the five-minute demo with reset to baseline, role journeys, a hostile document and the real server; safety regressions; every PRODUCT_SPEC §6 criterion mapped to tests in docs/QA_REPORT.md; 767 passed + 1 skipped without the optional package, 768 with it). Next: Stage 14.**
 Each stage is one Claude Code prompt from the build-prompt pack. Implement ONE stage, get its gate green, commit, then stop.
 
 ## Stages

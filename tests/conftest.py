@@ -1,7 +1,16 @@
-"""Shared test fixtures. Every test uses a temporary database, never data/demo.db."""
+"""Shared test fixtures. Every test uses a temporary database, never data/demo.db.
+
+Three guards cover the whole suite (Stage 13):
+- the network is blocked: any connection to a host other than this machine fails;
+- the app runs offline with no API key, even if a developer's `.env` holds one;
+- `data/demo.db` must be byte-identical before and after the run.
+"""
 
 from __future__ import annotations
 
+import hashlib
+import os
+import socket
 import sqlite3
 from collections.abc import Iterator
 from datetime import UTC, date, datetime
@@ -45,6 +54,77 @@ HIDDEN_FROM_ANALYST = (
     "0.9% and 1.4%",
     "to a new segment",
 )
+DEMO_DB = REPO_ROOT / "data" / "demo.db"
+LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1", ""}
+# Real environment variables beat `.env`, and an empty key counts as no key, so these
+# keep the app offline in tests whatever a local `.env` file says.
+OFFLINE_ENV = {"LLM_MODE": "offline", "ANTHROPIC_API_KEY": "", "DM_LLM_MODEL": ""}
+
+
+class NetworkBlockedError(RuntimeError):
+    """A test tried to reach the network. The suite must run offline."""
+
+
+def _host(address: object) -> str:
+    if isinstance(address, tuple) and address:
+        return str(address[0])
+    return str(address)
+
+
+@pytest.fixture(autouse=True, scope="session")
+def _offline_suite() -> Iterator[None]:
+    """Block every connection and name lookup that leaves this machine."""
+    real_connect, real_connect_ex = socket.socket.connect, socket.socket.connect_ex
+    real_getaddrinfo = socket.getaddrinfo
+
+    def check(sock: socket.socket, address: object) -> None:
+        local = sock.family == getattr(socket, "AF_UNIX", None) or _host(address) in LOCAL_HOSTS
+        if not local:
+            raise NetworkBlockedError(f"Tests run offline; refused to reach {_host(address)}.")
+
+    def connect(sock, address):
+        check(sock, address)
+        return real_connect(sock, address)
+
+    def connect_ex(sock, address):
+        check(sock, address)
+        return real_connect_ex(sock, address)
+
+    def getaddrinfo(host, *args, **kwargs):
+        if host is not None and str(host) not in LOCAL_HOSTS:
+            raise NetworkBlockedError(f"Tests run offline; refused to look up {host}.")
+        return real_getaddrinfo(host, *args, **kwargs)
+
+    socket.socket.connect, socket.socket.connect_ex = connect, connect_ex
+    socket.getaddrinfo = getaddrinfo
+    try:
+        yield
+    finally:
+        socket.socket.connect, socket.socket.connect_ex = real_connect, real_connect_ex
+        socket.getaddrinfo = real_getaddrinfo
+
+
+@pytest.fixture(autouse=True, scope="session")
+def _no_key_and_demo_db_untouched() -> Iterator[None]:
+    """No API key for the whole run, and the real demo database left exactly as it was."""
+    saved = {name: os.environ.get(name) for name in OFFLINE_ENV}
+    os.environ.update(OFFLINE_ENV)
+
+    def fingerprint() -> str | None:
+        return hashlib.sha256(DEMO_DB.read_bytes()).hexdigest() if DEMO_DB.exists() else None
+
+    before = fingerprint()
+    try:
+        yield
+    finally:
+        for name, value in saved.items():
+            if value is None:
+                os.environ.pop(name, None)
+            else:
+                os.environ[name] = value
+    assert fingerprint() == before, "A test changed data/demo.db; use a temporary database."
+
+
 NOW = datetime(2026, 11, 12, 10, 0, tzinfo=UTC)
 STAMPS = {"created_at": NOW, "updated_at": NOW}
 
@@ -124,8 +204,9 @@ def run_app(monkeypatch: pytest.MonkeyPatch, seeded_db: Path):
     def _run(*, role: str | None = None, evidence: str | None = None, db: Path | None = None):
         from streamlit.testing.v1 import AppTest
 
-        for name in ("ANTHROPIC_API_KEY", "LLM_MODE", "DM_LOG_LEVEL"):
-            monkeypatch.delenv(name, raising=False)
+        monkeypatch.delenv("DM_LOG_LEVEL", raising=False)
+        for name, value in OFFLINE_ENV.items():  # beats any value in a local .env
+            monkeypatch.setenv(name, value)
         monkeypatch.setenv("DM_DB_PATH", str(db or seeded_db))
         app = AppTest.from_file(str(APP_FILE), default_timeout=30)
         if role is not None:
