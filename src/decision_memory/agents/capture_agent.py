@@ -64,6 +64,7 @@ INFO = AgentInfo(
 )
 
 SYNTHETIC_MARKER = "[SYNTHETIC DEMO DATA:"
+CAPTURED_AUTHOR = "Captured in the demo app"  # author label of every transcript captured here
 MAX_TRANSCRIPT_CHARS = 100_000
 ALLOWED_SUFFIXES = (".txt", ".md")
 
@@ -553,7 +554,7 @@ def confirm_capture(
                 source_type=SourceType.TEAMS_TRANSCRIPT,
                 title=meeting_title or "Captured meeting transcript",
                 document_date=reviewed.decision_date,
-                author_label="Captured in the demo app",
+                author_label=CAPTURED_AUTHOR,
                 body=transcript,
                 access_roles=access_roles,
                 # A label, not a real link: nothing in this app connects to Teams.

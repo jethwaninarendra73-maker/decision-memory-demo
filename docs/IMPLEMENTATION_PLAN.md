@@ -1,6 +1,6 @@
 # Implementation Plan — Decision Memory MVP
 
-Status: **Stage 10 complete (governance: simulated approval by an approver role only, 60-day tracker with 4 milestones and 8 weekly KPI slots, ordered KPI entries, rule-suggested verdict at the executive review, outcome cited from a generated close report and visible in graph and search on the next rerun; enforced proposal state machine; every change audited; restricted pilots invisible to other roles; review fixes: failed precedents kept past the top 5, generated records never quoted as impact evidence, SLA claimed only where checked; 609 tests). Next: Stage 11.**
+Status: **Stage 11 complete (guided six-step demo panel above the tabs: each step opens its tab, lists actions and a talk track built from on-screen figures, and shows live checks for the active role; the synthetic-data banner at the top of the page and of every tab; full walkthrough done in the browser; review fixes: step 6 checks only the pilot for the question on screen, hiding the guide keeps its step; 640 tests). Next: Stage 12.**
 Each stage is one Claude Code prompt from the build-prompt pack. Implement ONE stage, get its gate green, commit, then stop.
 
 ## Stages

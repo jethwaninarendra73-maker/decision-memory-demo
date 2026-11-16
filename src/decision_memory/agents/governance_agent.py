@@ -258,6 +258,16 @@ def pilot_records(view: MemoryView) -> list[PilotRecord]:
     )
 
 
+def pilot_for_question(view: MemoryView, question: str) -> PilotRecord | None:
+    """The newest visible approved, running or completed pilot for this question."""
+    for record in pilot_records(view):
+        if record.proposal.status is not ProposalStatus.REJECTED and _same_question(
+            record.proposal.question, question
+        ):
+            return record
+    return None
+
+
 def open_pilot(view: MemoryView, question: str) -> Proposal | None:
     """A visible approved or running pilot for the same question, if there is one."""
     for proposal in view.proposals():

@@ -104,13 +104,15 @@ Recommendation rule: drop options that breach the churn guardrail (≤ 1.2% of b
 
 Talk track for "where does +$14M come from?": $400M × 5% × 90% non-exempt = $18M, minus $400M × 1% churn loss = $4M, gives $14M revenue before margin treatment. Every input is editable on screen.
 
+The guided demo panel (Stage 11, `demo_guide.py` and `ui/guide.py`) follows these six steps: each opens its tab, lists what to do and say, and shows live checks read from the app for the active role. The talk track above is generated from the scenario figures on screen, never typed in.
+
 ## 6. Acceptance criteria
 
 **Baseline (offline, no API key, single command)**
 - [ ] `streamlit run app.py` starts with no network and no `ANTHROPIC_API_KEY`.
 - [ ] Seed loads ≥ 12 fictional historical freight pricing decisions (mostly European, 1–2 non-European), ≥ 3 source types, a mix of successful, partial and failed outcomes, and at least one contradictory or poor precedent.
 - [ ] `seed_demo.py` is idempotent; `reset_demo.py` restores byte-identical baseline query results.
-- [ ] Every page with numbers or advice shows the synthetic-data banner.
+- [ ] Every page with numbers or advice shows the synthetic-data banner ("SYNTHETIC DATA — NOT A PREDICTION OR AUTHORIZED BUSINESS DECISION": at the top of the page and of every stage tab, Stage 11).
 
 **Capture (Agent 1)**
 - [ ] The demo transcript yields one decision with owner, date, rationale, risk and exact evidence offsets; distractor discussion produces no decision.

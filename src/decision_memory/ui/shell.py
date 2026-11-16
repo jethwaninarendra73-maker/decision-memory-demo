@@ -28,6 +28,13 @@ from decision_memory.repository import Repository
 from decision_memory.ui.capture import render_capture
 from decision_memory.ui.evidence import render_evidence_explorer
 from decision_memory.ui.governance import render_governance
+from decision_memory.ui.guide import (
+    GUIDE_HELP,
+    GUIDE_ON_KEY,
+    TAB_KEY,
+    build_state,
+    render_guide,
+)
 from decision_memory.ui.impact import render_impact
 from decision_memory.ui.memory_graph import render_memory_graph
 from decision_memory.ui.recommendation import render_recommendation
@@ -45,6 +52,11 @@ RESET_PLACEHOLDER_NOTE = (
 def render_banner() -> None:
     """Persistent label shown above every view."""
     st.warning(f"**{SYNTHETIC_BANNER}** · fictional data, local only, advisory only", icon="⚠️")
+
+
+def render_tab_banner() -> None:
+    """The same label at the top of each stage tab, where the numbers and advice are."""
+    st.caption(f"⚠️ **{SYNTHETIC_BANNER}**")
 
 
 def select_role() -> Role:
@@ -70,6 +82,7 @@ def render_sidebar(settings: Settings) -> Role:
     with st.sidebar:
         st.header("Demo controls")
         role = select_role()
+        st.toggle("Guided demo", value=True, key=GUIDE_ON_KEY, help=GUIDE_HELP)
         st.markdown(f"**Mode:** `{settings.effective_llm_mode}` (deterministic baseline)")
         if settings.llm_fallback_reason:
             st.info(f"{settings.llm_fallback_reason} Running offline.")
@@ -109,7 +122,9 @@ def render_app(settings: Settings, repo: Repository) -> None:
     role = render_sidebar(settings)
     view = MemoryView(repo, role)
 
-    tabs = st.tabs([agent.label for agent in AGENTS])
+    guide = st.container()  # drawn above the tabs, filled after them
+    # The tabs track which one is open, so the guide can open the tab for each step.
+    tabs = st.tabs([agent.label for agent in AGENTS], key=TAB_KEY, on_change="rerun")
     search: SearchResult | None = None  # tabs render in order, so search runs first
     proposal: Proposal | None = None
     impact: ImpactAssessment | None = None
@@ -118,6 +133,7 @@ def render_app(settings: Settings, repo: Repository) -> None:
     now = datetime.now(UTC)
     for tab, agent in zip(tabs, AGENTS, strict=True):
         with tab:
+            render_tab_banner()
             if agent.key == "capture":
                 render_capture(repo, view, settings.fixtures_dir)
             elif agent.key == "memory":
@@ -132,6 +148,10 @@ def render_app(settings: Settings, repo: Repository) -> None:
                 )
             elif agent.key == "governance":
                 render_governance(repo, view, proposal, scenarios, recommendation, now)
+
+    if st.session_state.get(GUIDE_ON_KEY, True):
+        state = build_state(view, search, proposal, scenarios, recommendation, impact)
+        render_guide(guide, view, state)
 
     st.divider()
     render_evidence_explorer(view)

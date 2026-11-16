@@ -1,10 +1,10 @@
 # Enterprise Decision Intelligence & Institutional Memory Agent — Hackathon MVP
 
-> **SYNTHETIC DEMO — NOT A REAL FORECAST.** All data is fictional. Nothing here connects to Teams, Jira, email or any company system, and nothing executes a business action.
+> **SYNTHETIC DATA — NOT A PREDICTION OR AUTHORIZED BUSINESS DECISION.** All data is fictional. Nothing here connects to Teams, Jira, email or any company system, and nothing executes a business action.
 
 An offline-first Streamlit app that walks a Pricing Director through one question, *"Should we increase the freight surcharge by 5% for European customers next quarter?"*, using six logical agents: Decision Capture, Institutional Memory, Impact Analysis, Scenario Simulation, Recommendation and Governance.
 
-**Build status: Stage 10 of 15.** All six agents work end to end. Agent 1 captures a decision from a synthetic transcript. Agent 2 answers the question with ranked, cited precedents and a decision graph. Agents 3 to 5 assess impact, compare +3/+5/+7% and recommend a guarded option. Agent 6 records a simulated approval, tracks the pilot for 60 days and writes its outcome back to memory. Everything is filtered for the selected demo role, cited, and audited. The guided demo, the optional LLM mode and the demo kit come in later stages. See [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md).
+**Build status: Stage 11 of 15.** All six agents work end to end. Agent 1 captures a decision from a synthetic transcript. Agent 2 answers the question with ranked, cited precedents and a decision graph. Agents 3 to 5 assess impact, compare +3/+5/+7% and recommend a guarded option. Agent 6 records a simulated approval, tracks the pilot for 60 days and writes its outcome back to memory. Everything is filtered for the selected demo role, cited, and audited. A guided panel walks a presenter through the five-minute demo. The optional LLM mode and the demo kit come in later stages. See [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md).
 
 ## Requirements
 
@@ -29,6 +29,27 @@ streamlit run app.py
 ```
 
 The app opens at http://localhost:8501. Stop it with `Ctrl+C`.
+
+## Guided demo (five minutes, six steps)
+
+A **Guided demo** panel sits above the stage tabs. It is on by default; turn it off with the **Guided demo** switch in the sidebar to use the tabs freely.
+
+| Step | Time | Where | What happens |
+|------|------|-------|--------------|
+| 1 · Hook | 0:00–0:30 | the panel | Three synthetic artifacts, quoted as memory cites them: the France decision call (Teams-style transcript, SRC-006), the European pricing guardrails (steering deck, SRC-014) and the Germany contract-customer escalations (Jira-style ticket, SRC-002). Each opens in full in the Evidence explorer. |
+| 2 · Capture | 0:30–1:15 | tab 1 | Extract the demo transcript, review, confirm. |
+| 3 · Ask | 1:15–2:15 | tab 2 | Cited precedents, the failed one as a warning, the lesson from another region, the graph. |
+| 4 · Analyze | 2:15–3:30 | tabs 3 and 4 | Impact labels, tick the contract-customer exclusion, compare +3/+5/+7%. |
+| 5 · Recommend | 3:30–4:30 | tab 5 | The advisory card, the guardrail exclusion, key risks, cited reasons. |
+| 6 · Close the loop | 4:30–5:00 | tabs 6 and 2 | Approve (simulated), record week 1, close the pilot, see the outcome in memory. |
+
+- **Next step** and **Back** move between steps and open the step's tab. Hiding the guide keeps its step. Each step also has buttons for the tabs it uses. Picking a step directly works too. The tabs remember which one is open, so switching tabs reruns the app (about 0.3 s locally).
+- Each step lists what to do and what to say. The "where does the figure come from" talk track in step 4 is built from the scenario figures on screen, so it follows any edited input.
+- **Live checks** show what the app currently holds for the active role, for example "Precedents returned: …", "High-volume contract customers are excluded in the draft proposal" or "Outcome OUT-015 is in memory". They are read from the tabs on every rerun; they never change anything.
+- The guide reads only through the role-filtered view, like the tabs. It shows nothing a role cannot see.
+- The steps, checks and talk tracks are in `src/decision_memory/demo_guide.py` (pure, tested); the panel is `src/decision_memory/ui/guide.py`.
+
+Every stage tab starts with the label **SYNTHETIC DATA — NOT A PREDICTION OR AUTHORIZED BUSINESS DECISION**, and the same label stays at the top of the page.
 
 ## Demo data: seed and reset
 
@@ -244,7 +265,9 @@ src/decision_memory/
   agents/scenario_agent.py  Agent 4: pure scenario formulas, defaults and their sources
   agents/recommendation_agent.py  Agent 5: option rules, cited reasons, action plan
   agents/governance_agent.py      Agent 6: approval, 60-day tracker, KPIs, outcome write-back
-  ui/shell.py               banner, sidebar with role selector, six stage tabs
+  ui/shell.py               banners, sidebar with role selector and guide switch, six stage tabs
+  ui/guide.py               guided demo panel: steps, navigation, live checks
+  demo_guide.py             guided demo steps, live checks and talk tracks (pure)
   ui/capture.py             Agent 1 view: transcript, card, review, confirm
   precedent_search.py       transparent precedent ranking with abstention
   ui/search.py              Agent 2 view: question, filters, cited precedents
@@ -271,7 +294,8 @@ docs/                       product spec and implementation plan
 ## Not available yet
 
 - **Demo reset button**: the sidebar button is still a disabled placeholder; use `python scripts/reset_demo.py`.
-- The optional Anthropic mode (Stage 12) and the guided six-step demo (Stage 11).
+- The optional Anthropic mode (Stage 12), the demo script and the in-app reset button (Stage 14).
+- The guide does not check off the Hook, and its live checks describe the app's state, not what the presenter has shown: a decision captured in an earlier run already counts for step 2. Reset the demo database before a rehearsal. Step 6 counts only a pilot for the question on screen.
 - Governance tracks against the plan fixed at approval. Milestone states are recalculated only when someone records a KPI or closes the pilot, so an overdue milestone shows as at risk only after the next entry. Tracker days count from the approval date, not from the proposal's effective quarter.
 - The open-pilot check compares question text, so the same proposal phrased differently can be approved twice.
 - The question text is copied into the approval record. A question typed by a role with wider access is visible to whoever can see that record. Only cited sources set the audience, not what was typed.

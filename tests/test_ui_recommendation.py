@@ -113,7 +113,8 @@ def test_every_backed_option_over_the_guardrail_means_do_not_proceed(run_app) ->
     assert headlines(app) == ["#### Advisory recommendation: Do not proceed"]
     assert any(w.value.startswith("Do not proceed") for w in app.warning)
     assert block(app, "- Guardrail: churn loss must stay within 1\\.2%")
-    assert not [m for m in app.markdown if m.value.startswith("1. ")]  # no action plan
+    # No action plan (its first step is the exclusion; the guide has numbered steps too).
+    assert not [m for m in app.markdown if m.value.startswith("1. Exclude")]
 
 
 @pytest.mark.parametrize(
