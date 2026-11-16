@@ -25,7 +25,9 @@ Abstention: a decision is a candidate only if its lexical score reaches `min_lex
 "insufficient verifiable evidence" when no candidate reaches `min_score`.
 
 Failed precedents are returned with a warning: they show what to avoid, never a
-template to repeat.
+template to repeat. A qualifying failed precedent that ranks below the top `top_k` is
+still returned after them (up to `failed_beyond_top_k`), so a newer, closer decision
+cannot push the warning out of view.
 
 Lessons from other regions: when the question names a region, the best `cross_region_k`
 decisions from other regions that pass the same two bars are returned separately, as
@@ -84,6 +86,8 @@ class SearchSettings(Contract):
     no_outcome_relevance: Fraction = 0.3
     rate_tolerance: Annotated[float, Field(gt=0, le=1)] = 0.05
     cross_region_k: Annotated[int, Field(ge=0, le=3)] = 2
+    # Failed precedents that qualify but rank below the top_k are kept as warnings.
+    failed_beyond_top_k: Annotated[int, Field(ge=0, le=3)] = 2
 
 
 DEFAULT_SETTINGS = SearchSettings()
@@ -533,12 +537,21 @@ def select_precedents(
         and p.decision_claim.supported
     ]
     if not query.region:
-        return qualifying[: settings.top_k], []
+        return _with_failed(qualifying, settings), []
     # Region match is part of the score, so precedents are mostly in-region; the
     # out-of-region ones that still qualify are lessons, kept apart from them.
     in_region = [p for p in qualifying if _same(p.region, query.region)]
     elsewhere = [p for p in qualifying if not _same(p.region, query.region)]
-    return in_region[: settings.top_k], elsewhere[: settings.cross_region_k]
+    return _with_failed(in_region, settings), elsewhere[: settings.cross_region_k]
+
+
+def _with_failed(qualifying: list[Precedent], settings: SearchSettings) -> list[Precedent]:
+    """The top `top_k`, then any failed precedents ranked below them (up to
+    `failed_beyond_top_k`), in score order."""
+    top = qualifying[: settings.top_k]
+    failed = [p for p in qualifying[settings.top_k :] if p.outcome_verdict is OutcomeVerdict.FAILED]
+    return top + failed[: settings.failed_beyond_top_k]
+
 
 
 def search_precedents(
@@ -567,9 +580,16 @@ def search_precedents(
         f"score ≥ {format_setting(settings.min_score)}"
     )
     if precedents:
+        extra = len(precedents) - settings.top_k
         message = (
             f"{len(precedents)} precedent(s) above the "
             f"{format_setting(settings.min_score)} threshold."
+            + (
+                f" Includes {extra} failed precedent(s) ranked below the top "
+                f"{settings.top_k}, kept as warnings."
+                if extra > 0
+                else ""
+            )
         )
     elif cross_region:
         message = (

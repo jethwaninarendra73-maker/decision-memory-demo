@@ -12,7 +12,7 @@ import sqlite3
 import sys
 from pathlib import Path
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 APPLICATION_ID = 0x444D454D  # ASCII "DMEM"
 
 # Explicit transaction control on every supported Python version.
@@ -104,7 +104,8 @@ SCHEMA: tuple[str, ...] = (
     exclusions TEXT NOT NULL DEFAULT '[]',
     status TEXT NOT NULL,
     requested_by_role TEXT NOT NULL,
-    decision_id TEXT REFERENCES decisions(id)
+    decision_id TEXT REFERENCES decisions(id),
+    churn_guardrail REAL
 )""",
     f"""CREATE TABLE IF NOT EXISTS scenario_results ({_RECORD_COLUMNS},
     proposal_id TEXT NOT NULL REFERENCES proposals(id),
@@ -172,6 +173,13 @@ SCHEMA: tuple[str, ...] = (
 )
 
 
+# Steps that bring an existing file up to each version. A new file gets the full schema
+# above and skips them.
+MIGRATIONS: dict[int, tuple[str, ...]] = {
+    2: ("ALTER TABLE proposals ADD COLUMN churn_guardrail REAL",),
+}
+
+
 class SchemaError(RuntimeError):
     """The database file is not usable by this version of the app."""
 
@@ -201,6 +209,10 @@ def bootstrap(conn: sqlite3.Connection) -> None:
     try:
         for statement in SCHEMA:
             conn.execute(statement)
+        if version:  # an existing file: apply the steps it has not had yet
+            for step in range(version + 1, SCHEMA_VERSION + 1):
+                for statement in MIGRATIONS.get(step, ()):
+                    conn.execute(statement)
         conn.execute(f"PRAGMA application_id = {APPLICATION_ID}")
         conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
         conn.execute("COMMIT")

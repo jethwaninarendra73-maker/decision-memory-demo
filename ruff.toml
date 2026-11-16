@@ -11,5 +11,6 @@ extend-select = ["E402"]
 
 [lint.isort]
 known-first-party = ["decision_memory"]
-# Tests import shared helpers from tests/conftest.py as their own last import block.
-known-local-folder = ["conftest"]
+# Tests import shared helpers from tests/conftest.py (and a few test modules) as their own
+# last import block.
+known-local-folder = ["conftest", "test_governance_agent", "test_ui_memory_graph"]

@@ -36,6 +36,7 @@ class SourceType(StrEnum):
     JIRA_TICKET = "jira_ticket"
     EMAIL = "email"
     SERVICENOW = "servicenow"
+    GOVERNANCE_RECORD = "governance_record"  # written by Agent 6 in the app, never seeded
 
 
 class DecisionStatus(StrEnum):
@@ -91,6 +92,17 @@ class ProposalStatus(StrEnum):
     IN_PROGRESS = "in_progress"
     COMPLETED = "completed"
     REJECTED = "rejected"
+
+
+# The only allowed proposal moves: draft -> approved -> in_progress -> completed, or
+# draft -> rejected. Completed and rejected are final.
+PROPOSAL_TRANSITIONS: dict[ProposalStatus, frozenset[ProposalStatus]] = {
+    ProposalStatus.DRAFT: frozenset({ProposalStatus.APPROVED, ProposalStatus.REJECTED}),
+    ProposalStatus.APPROVED: frozenset({ProposalStatus.IN_PROGRESS}),
+    ProposalStatus.IN_PROGRESS: frozenset({ProposalStatus.COMPLETED}),
+    ProposalStatus.COMPLETED: frozenset(),
+    ProposalStatus.REJECTED: frozenset(),
+}
 
 
 class RecommendationType(StrEnum):
@@ -302,6 +314,8 @@ class Proposal(Record):
     status: ProposalStatus = ProposalStatus.DRAFT
     requested_by_role: Role
     decision_id: str | None = None
+    # Set when a pilot is approved: the churn guardrail the plan was judged against.
+    churn_guardrail: Fraction | None = None
 
 
 class ScenarioAssumptions(Contract):
@@ -1006,3 +1020,87 @@ class RecommendationResult(Contract):
         if advises_a_rate and not rec.reasons:
             raise ValueError("A recommendation to act must give cited reasons")
         return self
+
+
+# --- governance (Agent 6) ------------------------------------------------------------------
+
+
+class ApprovalRequest(Contract):
+    """What the human approver enters on the governance tab (simulated, demo only)."""
+
+    approver_label: Annotated[str, Field(min_length=1, max_length=80)]
+    markets: list[NonEmptyStr] = Field(default_factory=list)
+    # A pilot's share of baseline revenue; None means the governance rules' default.
+    pilot_share: Annotated[float, Field(gt=0.0, le=1.0)] | None = None
+    note: Annotated[str, Field(max_length=500)] = ""
+
+    @field_validator("approver_label", "note", mode="before")
+    @classmethod
+    def _strip(cls, value: object) -> object:
+        return value.strip() if isinstance(value, str) else value
+
+    @field_validator("markets")
+    @classmethod
+    def _distinct_markets(cls, value: list[str]) -> list[str]:
+        if len(set(value)) != len(value):
+            raise ValueError("Each pilot market can be chosen once")
+        return value
+
+
+class PilotPlan(Contract):
+    """What an approval commits the tracker to. Computed from the recommendation and the
+    scenario figures by a visible formula; stored as the weekly KPI slots."""
+
+    surcharge_rate: Fraction
+    pilot: bool
+    markets: list[NonEmptyStr]
+    pilot_share: Annotated[float, Field(gt=0.0, le=1.0)]
+    quarter_revenue_change_musd: float
+    planned_weekly_revenue_musd: float
+    planned_churn_loss_fraction: Fraction
+    churn_guardrail: Fraction
+    weeks: Annotated[int, Field(ge=1, le=8)]
+    formula: NonEmptyStr
+
+    @model_validator(mode="after")
+    def _pilot_names_markets(self) -> PilotPlan:
+        if self.pilot != bool(self.markets):
+            raise ValueError("A pilot names its markets; a full rollout names none")
+        if not self.pilot and self.pilot_share != 1.0:
+            raise ValueError("A full rollout tracks the whole baseline")
+        return self
+
+
+class VerdictSuggestion(Contract):
+    """Rule-based verdict for closing a pilot. A suggestion: the human reviewer decides."""
+
+    verdict: OutcomeVerdict
+    reason: NonEmptyStr
+    weeks_recorded: Annotated[int, Field(ge=1, le=8)]
+    planned_revenue_musd: float  # quarter-equivalent, pilot markets
+    actual_revenue_musd: float
+    planned_churn_loss_fraction: Fraction
+    actual_churn_loss_fraction: Fraction
+    sla_status: SlaStatus
+
+
+class PilotRecord(Contract):
+    """Everything the governance tab shows for one stored proposal, read for one role."""
+
+    proposal: Proposal
+    recommendation: Recommendation
+    approval: Approval | None = None
+    decision: Decision | None = None
+    milestones: list[Milestone] = Field(default_factory=list)
+    kpis: list[KPIUpdate] = Field(default_factory=list)
+    outcome: Outcome | None = None
+    events: list[AuditEvent] = Field(default_factory=list)
+
+    @property
+    def recorded(self) -> list[KPIUpdate]:
+        return [kpi for kpi in self.kpis if kpi.actual_revenue_uplift_musd is not None]
+
+    @property
+    def next_week(self) -> int | None:
+        open_slots = [kpi.week for kpi in self.kpis if kpi.actual_revenue_uplift_musd is None]
+        return min(open_slots) if open_slots else None

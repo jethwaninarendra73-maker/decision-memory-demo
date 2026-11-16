@@ -34,6 +34,7 @@ SOURCE_TYPE_LABELS: dict[SourceType, str] = {
     SourceType.JIRA_TICKET: "Jira-style ticket",
     SourceType.EMAIL: "Email-style message",
     SourceType.SERVICENOW: "ServiceNow-style record",
+    SourceType.GOVERNANCE_RECORD: "Governance-style record (generated in this app)",
 }
 
 _CITATION = re.compile(r"\[(SRC-[A-Z0-9][A-Z0-9-]*)\]")

@@ -1,6 +1,6 @@
 # Implementation Plan — Decision Memory MVP
 
-Status: **Stage 09 complete (recommendation: guardrail, evidence and upside rules per option; default is a phased +5% pilot, +7% excluded by the 1.2% churn guardrail, +3% noted as lower uplift; every reason cited, assumptions listed apart; no evidence gives "Insufficient evidence to recommend"; 520 tests). Next: Stage 10.**
+Status: **Stage 10 complete (governance: simulated approval by an approver role only, 60-day tracker with 4 milestones and 8 weekly KPI slots, ordered KPI entries, rule-suggested verdict at the executive review, outcome cited from a generated close report and visible in graph and search on the next rerun; enforced proposal state machine; every change audited; restricted pilots invisible to other roles; review fixes: failed precedents kept past the top 5, generated records never quoted as impact evidence, SLA claimed only where checked; 609 tests). Next: Stage 11.**
 Each stage is one Claude Code prompt from the build-prompt pack. Implement ONE stage, get its gate green, commit, then stop.
 
 ## Stages

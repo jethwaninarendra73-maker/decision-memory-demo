@@ -7,7 +7,7 @@ from datetime import UTC, date, datetime
 import streamlit as st
 
 from decision_memory import DEMO_QUESTION, SYNTHETIC_BANNER
-from decision_memory.agents import AGENTS, AgentInfo
+from decision_memory.agents import AGENTS
 from decision_memory.authz import (
     DEFAULT_ROLE,
     DEMO_ROLE_NOTICE,
@@ -16,11 +16,18 @@ from decision_memory.authz import (
     parse_role,
 )
 from decision_memory.config import Settings
-from decision_memory.models import ImpactAssessment, Proposal, Role, ScenarioSet
+from decision_memory.models import (
+    ImpactAssessment,
+    Proposal,
+    RecommendationResult,
+    Role,
+    ScenarioSet,
+)
 from decision_memory.precedent_search import SearchResult
 from decision_memory.repository import Repository
 from decision_memory.ui.capture import render_capture
 from decision_memory.ui.evidence import render_evidence_explorer
+from decision_memory.ui.governance import render_governance
 from decision_memory.ui.impact import render_impact
 from decision_memory.ui.memory_graph import render_memory_graph
 from decision_memory.ui.recommendation import render_recommendation
@@ -81,19 +88,6 @@ def render_sidebar(settings: Settings) -> Role:
     return role
 
 
-def render_stage_placeholder(agent: AgentInfo) -> None:
-    st.subheader(f"Agent {agent.label}")
-    st.write(agent.purpose)
-    reads, produces = st.columns(2)
-    with reads:
-        st.markdown("**Reads**")
-        st.write(agent.reads)
-    with produces:
-        st.markdown("**Produces**")
-        st.write(agent.produces)
-    st.info(f"Not built yet. This agent arrives in Stage {agent.build_stage:02d}.")
-
-
 def render_memory_tab(view: MemoryView) -> SearchResult | None:
     """Agent 2: ask a question, then see the cited precedents highlighted in the graph."""
     st.subheader("Agent 2 · Institutional Memory")
@@ -120,6 +114,7 @@ def render_app(settings: Settings, repo: Repository) -> None:
     proposal: Proposal | None = None
     impact: ImpactAssessment | None = None
     scenarios: ScenarioSet | None = None
+    recommendation: RecommendationResult | None = None
     now = datetime.now(UTC)
     for tab, agent in zip(tabs, AGENTS, strict=True):
         with tab:
@@ -132,9 +127,11 @@ def render_app(settings: Settings, repo: Repository) -> None:
             elif agent.key == "scenario":
                 scenarios = render_scenarios(view, proposal, now)
             elif agent.key == "recommendation":
-                render_recommendation(view, search, proposal, impact, scenarios, now)
-            else:
-                render_stage_placeholder(agent)
+                recommendation = render_recommendation(
+                    view, search, proposal, impact, scenarios, now
+                )
+            elif agent.key == "governance":
+                render_governance(repo, view, proposal, scenarios, recommendation, now)
 
     st.divider()
     render_evidence_explorer(view)

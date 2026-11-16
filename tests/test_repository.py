@@ -180,6 +180,21 @@ def test_newer_schema_version_is_refused(db_path: Path) -> None:
         db.open_database(db_path)
 
 
+def test_a_version_1_file_is_upgraded_in_place(seeded_db: Path) -> None:
+    # Version 1 had no proposals.churn_guardrail column; opening the file adds it.
+    conn = db.connect(seeded_db)
+    conn.execute("ALTER TABLE proposals DROP COLUMN churn_guardrail")
+    conn.execute("PRAGMA user_version = 1")
+    conn.close()
+    with Repository.open(seeded_db) as upgraded:
+        columns = {row["name"] for row in upgraded._conn.execute("PRAGMA table_info(proposals)")}
+        assert "churn_guardrail" in columns
+        assert upgraded._conn.execute("PRAGMA user_version").fetchone()[0] == db.SCHEMA_VERSION
+        assert upgraded.count(Decision) == 16  # the data is kept
+    with Repository.open(seeded_db) as reopened:  # and opening again is harmless
+        assert reopened.count(Decision) == 16
+
+
 @pytest.mark.parametrize("model", stored_models(), ids=lambda model: model.__name__)
 def test_table_columns_match_model_fields(repo: Repository, model: type[Record]) -> None:
     rows = repo._conn.execute(f"PRAGMA table_info({table_name(model)})").fetchall()

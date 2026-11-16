@@ -12,6 +12,10 @@ Rules (implemented as SQL in `repository.py`):
 - An outcome needs an eligible decision and only visible evidence of its own.
 - An entity is visible only through an eligible decision linked to it.
 - A relation is visible only if both of its ends are.
+- A stored recommendation is visible only if the role can cite every excerpt it cites.
+- A stored proposal is visible only if its recommendation is. Its approvals, milestones,
+  weekly KPI updates and audit events follow it; its decision and outcome follow the
+  rules above (Agent 6 gives them the same audience as the recommendation).
 
 A withheld record is indistinguishable from one that does not exist.
 """
@@ -21,9 +25,14 @@ from __future__ import annotations
 from typing import Any
 
 from .models import (
+    Approval,
+    AuditEvent,
     Decision,
     Entity,
+    KPIUpdate,
+    Milestone,
     Outcome,
+    Proposal,
     Recommendation,
     Relation,
     Role,
@@ -141,3 +150,51 @@ class MemoryView:
     def recommendation(self, recommendation_id: str) -> Recommendation | None:
         found = self.recommendations(id=recommendation_id)
         return found[0] if found else None
+
+    # --- governance -----------------------------------------------------
+
+    def proposals(self, **equals: Any) -> list[Proposal]:
+        """Stored proposals whose recommendation this role may see, ordered by ID.
+
+        Like recommendations, this check runs here because citations sit in JSON.
+        """
+        visible = {recommendation.proposal_id for recommendation in self.recommendations()}
+        return [p for p in self._repo.find(Proposal, **equals) if p.id in visible]
+
+    def proposal(self, proposal_id: str) -> Proposal | None:
+        found = self.proposals(id=proposal_id)
+        return found[0] if found else None
+
+    def approvals(self, recommendation_id: str) -> list[Approval]:
+        if self.recommendation(recommendation_id) is None:
+            return []
+        return self._repo.find(Approval, recommendation_id=recommendation_id)
+
+    def milestones(self, proposal_id: str) -> list[Milestone]:
+        if self.proposal(proposal_id) is None:
+            return []
+        return sorted(
+            self._repo.find(Milestone, proposal_id=proposal_id), key=lambda m: (m.due_date, m.id)
+        )
+
+    def kpi_updates(self, proposal_id: str) -> list[KPIUpdate]:
+        if self.proposal(proposal_id) is None:
+            return []
+        return sorted(self._repo.find(KPIUpdate, proposal_id=proposal_id), key=lambda k: k.week)
+
+    def audit_trail(self, proposal_id: str) -> list[AuditEvent]:
+        """Audit events for a visible proposal and the visible records that belong to it."""
+        proposal = self.proposal(proposal_id)
+        if proposal is None:
+            return []
+        ids = {proposal.id}
+        for recommendation in self.recommendations(proposal_id=proposal.id):
+            ids.add(recommendation.id)
+            ids.update(approval.id for approval in self.approvals(recommendation.id))
+        if proposal.decision_id and self.decision(proposal.decision_id) is not None:
+            ids.add(proposal.decision_id)
+            ids.update(o.id for o in self.outcomes(decision_id=proposal.decision_id))
+        ids.update(m.id for m in self.milestones(proposal.id))
+        ids.update(k.id for k in self.kpi_updates(proposal.id))
+        events = [e for record_id in ids for e in self._repo.find(AuditEvent, entity_id=record_id)]
+        return sorted(events, key=lambda e: e.id)

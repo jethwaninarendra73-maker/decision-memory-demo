@@ -9,7 +9,8 @@ How an item is found (rules in `DEFAULT_RULES`, editable in this module):
   sources its decision and its outcome cite) that contains one of the terms. A term
   matches any word that starts with it, ignoring case; a hyphen joins words, so
   "dispute" does not match "invoice-dispute". The first matching line per precedent is
-  quoted with exact character offsets.
+  quoted with exact character offsets. Governance records that Agent 6 generates in the
+  app are never quoted: they restate the app's own output.
 - A rule with at least one quoted line is `source_supported`. A rule whose entity is
   linked to a precedent in the memory graph, but whose terms appear in none of that
   precedent's sources, is listed as `assumed_for_demo` and says so.
@@ -49,6 +50,7 @@ from ..models import (
     Role,
     SourceDocument,
     SourceRef,
+    SourceType,
 )
 from ..precedent_search import format_setting
 from ..provenance import INSUFFICIENT_EVIDENCE_TEXT, InaccessibleEvidenceError, resolve_all
@@ -450,6 +452,10 @@ class _Precedent:
         for source_id in source_ids:
             source = view.source(source_id)
             if source is None:  # cannot happen for an eligible decision; fail closed anyway
+                continue
+            if source.source_type is SourceType.GOVERNANCE_RECORD:
+                # Written by Agent 6 from this app's own output (approval and close
+                # records): quoting it would count the app's words as independent evidence.
                 continue
             lines += [
                 ImpactEvidence(

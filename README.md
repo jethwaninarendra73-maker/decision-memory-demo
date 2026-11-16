@@ -4,7 +4,7 @@
 
 An offline-first Streamlit app that walks a Pricing Director through one question, *"Should we increase the freight surcharge by 5% for European customers next quarter?"*, using six logical agents: Decision Capture, Institutional Memory, Impact Analysis, Scenario Simulation, Recommendation and Governance.
 
-**Build status: Stage 06 of 15.** Agent 1 (Decision Capture) turns a synthetic transcript into a reviewed, confirmed decision in memory. Agent 2 (Institutional Memory) answers a pricing question with ranked, cited precedents and shows memory as a typed decision graph, both filtered for the selected demo role. Underneath are typed models, a SQLite store with a repeatable synthetic baseline, permission filtering, citations and an audit trail. Agents 3 to 6 are still stubs. See [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md).
+**Build status: Stage 10 of 15.** All six agents work end to end. Agent 1 captures a decision from a synthetic transcript. Agent 2 answers the question with ranked, cited precedents and a decision graph. Agents 3 to 5 assess impact, compare +3/+5/+7% and recommend a guarded option. Agent 6 records a simulated approval, tracks the pilot for 60 days and writes its outcome back to memory. Everything is filtered for the selected demo role, cited, and audited. The guided demo, the optional LLM mode and the demo kit come in later stages. See [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md).
 
 ## Requirements
 
@@ -38,7 +38,7 @@ python scripts/reset_demo.py    # delete data/demo.db and rebuild the baseline
 ```
 
 - **Seed** upserts the fixture records by ID. Running it twice changes nothing, and it leaves records you created in the app alone.
-- **Reset** removes everything created in the app. It refuses to delete a file this app did not create.
+- **Reset** removes everything created in the app, including approvals, pilot trackers, generated governance records and their outcomes. It refuses to delete a file this app did not create.
 - Both accept `--db PATH` to target another file.
 
 Baseline counts after either command:
@@ -86,7 +86,7 @@ Tab **2 · Institutional Memory** opens with **Ask institutional memory**. The d
 - The region and surcharge rate are read from the question only when it states exactly one of each (for example "European" and "5%"). They appear under **Filters read from the question**, where they can be changed, along with an optional customer segment and the date recency is measured from.
 - Search matches words, helped by a short, visible list of equivalences (for example "price uplift" → "surcharge increase", "client" → "customer", "trial" → "pilot", "EU" → "Europe"). The equivalences a question triggered are listed under it; the full list is `PHRASES` and `SYNONYMS` in `src/decision_memory/precedent_search.py`.
 - Each decision gets four scores between 0 and 1, all shown with how they were worked out: **lexical overlap** (share of the question's terms found in the decision, rarer terms counting more; words that only name the asked region are left to the match score, so they are not counted twice), **region / segment / rate match**, **outcome relevance** (1 if an outcome has been observed, 0.3 if not), and **recency** (halves every 730 days). The total is 0.40 × lexical + 0.30 × match + 0.15 × outcome + 0.15 × recency. If the question sets no region, segment or rate, the match weight is shared across the other three.
-- Up to five decisions are returned. A decision must share enough of the question's terms (lexical at least 0.5) and score at least 0.45, so a matching region or rate alone never makes something a precedent. If nothing qualifies, the answer is "Insufficient verifiable evidence." and nothing is returned.
+- Up to five decisions are returned, plus up to two failed precedents that qualify but rank below them: a newer, closer decision (such as an approved pilot) never pushes a failure warning out of view. A decision must share enough of the question's terms (lexical at least 0.5) and score at least 0.45, so a matching region or rate alone never makes something a precedent. If nothing qualifies, the answer is "Insufficient verifiable evidence." and nothing is returned.
 - When the question names a region, up to two decisions from **other** regions that clear the same two bars are shown under **Lessons from other regions**. They are contrast, not precedents for the asked region, and they are not cited as such.
 - Both bars can be changed with sliders under **Filters read from the question**. The defaults are checked against 21 hand-labelled questions in `tests/search_eval.json` (demo, reworded and specific questions that should find given decisions, and off-topic ones that should abstain). On that set, every setting with lexical 0.40–0.575 and score 0.20–0.60 gives the expected answers, and a test keeps every setting within ±0.05 of the defaults passing. The labels are the author's reading of the fictional data, not a benchmark.
 - Every result cites what was decided and what happened, with `[SRC-…]` excerpts. A failed precedent is shown with a warning: it is a lesson, not a template.
@@ -151,7 +151,23 @@ Tab **5 · Recommendation** turns the precedents (tab 2), the impact analysis (t
 - **Condition.** The recommendation holds only if high-volume contract customers are excluded. The card says whether the draft proposal in tab 3 already excludes them.
 - **Risk level** is rule-based: high if a precedent near the chosen rate failed; medium if one was partial, a key risk exists or there is no impact analysis; low otherwise.
 - The **action plan** is for the approver and ends with the approval requirement. For a pilot it tracks the churn loss share, which does not depend on scale; the scenario revenue figures cover the whole baseline, so the plan says to scale them to the pilot markets and lists that as an assumption. **How each option was judged** lists every option with its verdict, successful precedents and cautions.
-- The recommendation is checked with `verify_recommendation` for the active role before it is shown. If a citation cannot be verified, nothing from it is shown. It is not stored; Agent 6 records the approval.
+- The recommendation is checked with `verify_recommendation` for the active role before it is shown. If a citation cannot be verified, nothing from it is shown. It is stored only when someone approves or rejects it in tab 6.
+
+## Governance (Agent 6)
+
+Tab **6 · Governance** closes the loop: a human decides on the tab 5 recommendation, the pilot is tracked for 60 days, and its outcome goes back into memory. Everything here is simulated. Approvals, KPI values and outcomes are records typed into the demo. Nothing changes a price, sends a message or opens a ticket.
+
+- **Who can do what.** Pricing Director and Restricted Executive can approve, reject and close. The Analyst can record weekly KPIs but cannot approve, reject or close. Role switching is a demo control, not authentication. Every action asks for a (fictional) name for the audit trail.
+- **Approving** needs a recommendation that names a rate (phased pilot or proceed) and its condition met: high-volume contract customers excluded in tab 3. Otherwise the tab says why, and Approve is not offered or stays disabled. For a pilot the approver picks the 2 pilot markets (European markets from visible decisions) and the pilot markets' share of baseline revenue (20% by default, assumed for demo; the same default applies when none is given). Only one pilot per question can be open at a time.
+- **What an approval stores**, in one transaction: the proposal (`draft → approved`), the recommendation, the approval, a generated **approval record** (a `governance_record` source, `SRC-023` in the demo), the pilot **decision** (`DEC-017`) citing that record, its links (`INFORMED_BY` the precedents used, `APPLIES_TO` the pilot markets), 4 milestones and 8 weekly KPI slots.
+- **The weekly plan** is a visible formula: planned weekly revenue change = quarterly revenue change × pilot share ÷ 13 weeks. For the demo, +$14.00M × 20% ÷ 13 = +$0.215M a week. Planned churn loss is the option's 1.0% of baseline revenue, with a pause-and-review flag above the 1.2% guardrail in force at approval (stored on the proposal).
+- **Milestones**: week 1 recorded (day 7), week 4 checkpoint (day 28), week 8 checkpoint (day 56), 60-day executive review (day 60, per the pilot policy in SRC-014). Days count from the approval date. A milestone is done when its week is recorded or the pilot closes. It is at risk if a recorded week up to it is flagged or it is overdue.
+- **Weekly KPIs** are entered one week at a time, in order, and never overwritten. They are prefilled with the plan. A week is flagged if churn loss is above plan or above the guardrail, revenue change is below plan, or the SLA is at risk or breached. The first entry moves the pilot to `in_progress`; a pilot cannot start without one.
+- **Closing** (the executive review, approver roles only) shows a rule-based verdict suggestion, and the verdict selector resets to it each time another week is recorded. **Failed:** average churn loss above the guardrail, or no revenue gain. **Success:** at or above plan on revenue and churn, with the SLA held. **Partial:** anything else. The SLA counts as held only in weeks where it was checked; if every week says "not modeled", the outcome says so. The reviewer decides, and a verdict that differs from the suggestion needs a note. Closing writes a generated **close report** (`SRC-024`) and an **Outcome** (`OUT-015`) citing its result and verdict lines. Figures are quarter-equivalents of the recorded weeks (weekly average × 13), for the pilot markets. The pilot moves to `completed`. A pilot can be closed after week 1 for the demo; the tab says how few weeks the outcome rests on.
+- **Back in memory.** On the next rerun, tab 2's search and graph show the pilot decision with its outcome, and the next recommendation counts it: a successful +5% pilot backs +5%, a partial or failed one is a caution. The pilot ranks first for its own question, so the failed Germany precedent drops to sixth place. It is still returned as a warning, so the key risks stay on the card. Tab 3 never quotes the generated approval and close records: they restate the app's own output and are not independent evidence.
+- **State machine**: `draft → approved → in_progress → completed`, or `draft → rejected`. Any other move is refused with an error and leaves no audit event. Rejecting stores the proposal, recommendation and rejection, but no decision or tracker.
+- **Audit trail.** Every change writes an audit event: approval, decision capture and confirmation, each status change, each KPI entry, each milestone state change, and the outcome. The tab lists the trail for the selected record. Details stay neutral: IDs and states, never question text or notes.
+- **Visibility.** The generated records get the same audience as the recommendation: the roles that can see every excerpt it cites. A pilot approved on restricted evidence is invisible to other roles, everywhere, like a record that does not exist.
 
 ## Demo roles and evidence
 
@@ -164,7 +180,7 @@ How visibility works:
 - A hidden record behaves exactly like one that does not exist: no title, snippet, ID or count is shown.
 - A statement that cannot be backed by visible sources is replaced with "Insufficient verifiable evidence." Nothing is filled in.
 - Citations look like `[SRC-006]` and carry the source title, type, date and the exact excerpt.
-- Capturing, confirming, editing and approving each write an audit event.
+- Capturing, confirming, editing, approving or rejecting, recording a weekly KPI, changing a milestone and closing a pilot each write an audit event.
 
 In the seeded data, `SRC-019` (and so decision `DEC-015`) is visible to the Restricted Executive only, and `SRC-021` (and so `DEC-016`) is hidden from the Analyst.
 
@@ -221,13 +237,13 @@ src/decision_memory/
   seed.py                   fixture loader, idempotent seed, reset
   authz.py                  demo roles and MemoryView, the role-scoped read window
   provenance.py             [SRC-...] citations, evidence items, insufficient-evidence rule
-  audit.py                  audited capture, review and approval writes
+  audit.py                  audited capture, review, approval and pilot-tracking writes
   agents/capture_agent.py   Agent 1: transcript parser and confirm-and-save
   agents/memory_agent.py    Agent 2: role-filtered decision graph (NetworkX projection)
   agents/impact_agent.py    Agent 3: impact rules, quoted evidence, cost and effort ranges
   agents/scenario_agent.py  Agent 4: pure scenario formulas, defaults and their sources
   agents/recommendation_agent.py  Agent 5: option rules, cited reasons, action plan
-  agents/                   agent 6 (stub until its stage)
+  agents/governance_agent.py      Agent 6: approval, 60-day tracker, KPIs, outcome write-back
   ui/shell.py               banner, sidebar with role selector, six stage tabs
   ui/capture.py             Agent 1 view: transcript, card, review, confirm
   precedent_search.py       transparent precedent ranking with abstention
@@ -236,6 +252,7 @@ src/decision_memory/
   ui/impact.py              Agent 3 view: draft proposal, labelled impact items, rules
   ui/scenarios.py           Agent 4 view: editable inputs, formulas, per-option results
   ui/recommendation.py      Agent 5 view: advisory card, condition, option verdicts
+  ui/governance.py          Agent 6 view: approval, tracker, KPI entry, review, audit trail
   ui/evidence.py            evidence explorer and source detail view
 scripts/seed_demo.py        load the baseline
 scripts/reset_demo.py       wipe and rebuild the baseline
@@ -254,7 +271,11 @@ docs/                       product spec and implementation plan
 ## Not available yet
 
 - **Demo reset button**: the sidebar button is still a disabled placeholder; use `python scripts/reset_demo.py`.
-- Agent 6 (approval, tracking and outcome write-back) and the optional Anthropic mode.
+- The optional Anthropic mode (Stage 12) and the guided six-step demo (Stage 11).
+- Governance tracks against the plan fixed at approval. Milestone states are recalculated only when someone records a KPI or closes the pilot, so an overdue milestone shows as at risk only after the next entry. Tracker days count from the approval date, not from the proposal's effective quarter.
+- The open-pilot check compares question text, so the same proposal phrased differently can be approved twice.
+- The question text is copied into the approval record. A question typed by a role with wider access is visible to whoever can see that record. Only cited sources set the audience, not what was typed.
+- Record IDs are sequential, so a gap (for example `DEC-017` hidden from a role while `DEC-018` is visible) shows that a hidden record exists. The seeded baseline already has such a gap (`DEC-015`).
 - The recommendation uses only the precedents search returned for the question, and its verdicts say so ("among those found for this question"). A relevant decision outside that list does not count: the failed 7% surcharge in Iberia does not appear as a caution for the demo question, and a question asked at 4% does not find France's successful 5%, so +5% is excluded there and +4% is recommended.
 - Impact rules match words in source lines. A source that describes an effect in words a rule does not list is missed, and a line that mentions a term only in passing (for example "No competitive response was observed") is still quoted as evidence. Read the quoted lines; the confidence label counts precedents, it does not judge them.
 - The rule table and per-system cost ranges are edited in code (`impact_agent.py`), not in the app.

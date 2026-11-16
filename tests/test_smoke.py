@@ -107,11 +107,13 @@ def test_agent_module_imports_and_exposes_info(module_name: str) -> None:
     assert module.INFO in AGENTS
 
 
-def test_stub_entry_point_says_which_stage_builds_it() -> None:
-    from decision_memory.agents import governance_agent
-
-    with pytest.raises(NotImplementedError, match="Stage 10"):
-        governance_agent.record_approval("REC-001", "pricing_director")
+def test_every_agent_is_built_and_shown_in_its_tab(run_app) -> None:
+    # No stage placeholder is left: each tab shows its agent's own heading.
+    app = run_app()
+    headings = [s.value for s in app.subheader]
+    for agent in AGENTS:
+        assert any(h.startswith(f"Agent {agent.number}") for h in headings), agent.key
+    assert "Not built yet" not in "\n".join(m.value for m in app.info)
 
 
 # --- Streamlit shell --------------------------------------------------------

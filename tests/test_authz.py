@@ -319,5 +319,6 @@ def test_view_exposes_no_write_or_raw_access() -> None:
     assert public == {
         "sources", "source", "can_cite", "decisions", "decision", "outcomes", "outcome",
         "entities", "relations", "recommendations", "recommendation",
+        "proposals", "proposal", "approvals", "milestones", "kpi_updates", "audit_trail",
     }  # fmt: skip
     assert isinstance(Entity, type)

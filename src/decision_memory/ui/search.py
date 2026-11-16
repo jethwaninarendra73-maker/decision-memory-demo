@@ -60,7 +60,9 @@ def formula_text(settings: SearchSettings) -> str:
         "region, segment or rate, the metadata weight is shared across the others). "
         f"A decision needs lexical "
         f"≥ {f(settings.min_lexical)} and score ≥ {f(settings.min_score)} to be returned; "
-        f"top {settings.top_k} shown. Recency half-life {settings.recency_half_life_days} days."
+        f"top {settings.top_k} shown, plus up to {settings.failed_beyond_top_k} failed "
+        "precedents ranked below them, kept as warnings. Recency half-life "
+        f"{settings.recency_half_life_days} days."
     )
 
 
