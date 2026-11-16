@@ -1,2 +1,3 @@
 # Optional, Stage 12 only. The app and tests must run without these.
-anthropic
+# 2.8.0 is the release this was checked against (beta create with fallbacks, output_config).
+anthropic>=2.8

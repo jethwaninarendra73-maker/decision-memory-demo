@@ -4,7 +4,7 @@
 
 An offline-first Streamlit app that walks a Pricing Director through one question, *"Should we increase the freight surcharge by 5% for European customers next quarter?"*, using six logical agents: Decision Capture, Institutional Memory, Impact Analysis, Scenario Simulation, Recommendation and Governance.
 
-**Build status: Stage 11 of 15.** All six agents work end to end. Agent 1 captures a decision from a synthetic transcript. Agent 2 answers the question with ranked, cited precedents and a decision graph. Agents 3 to 5 assess impact, compare +3/+5/+7% and recommend a guarded option. Agent 6 records a simulated approval, tracks the pilot for 60 days and writes its outcome back to memory. Everything is filtered for the selected demo role, cited, and audited. A guided panel walks a presenter through the five-minute demo. The optional LLM mode and the demo kit come in later stages. See [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md).
+**Build status: Stage 12 of 15.** All six agents work end to end. Agent 1 captures a decision from a synthetic transcript. Agent 2 answers the question with ranked, cited precedents and a decision graph. Agents 3 to 5 assess impact, compare +3/+5/+7% and recommend a guarded option. Agent 6 records a simulated approval, tracks the pilot for 60 days and writes its outcome back to memory. Everything is filtered for the selected demo role, cited, and audited. A guided panel walks a presenter through the five-minute demo. An optional Anthropic mode can reword the recommendation into a checked plain-language brief; everything else stays deterministic. The demo kit comes in a later stage. See [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md).
 
 ## Requirements
 
@@ -212,7 +212,7 @@ In the seeded data, `SRC-019` (and so decision `DEC-015`) is visible to the Rest
 - Anyone who can open the app can pick any role, or put `?role=restricted_exec` in the address. There are no user accounts, passwords or sessions.
 - The filter shows what a correctly implemented permission model would hide. It does not protect the data: the SQLite file and the fixture files hold every record in plain text for anyone with access to this folder.
 - "Sources" are fictional text files. The `mock://` references are labels, not links, and nothing connects to Teams, Jira, SharePoint, email or ServiceNow.
-- Source text is treated as untrusted data: it is shown literally, never rendered as Markdown or HTML, and never interpreted as an instruction. In the graph, labels are HTML-escaped before Plotly sees them. That is tested for the display and filtering paths that exist today; the optional LLM path (Stage 12) will need its own checks.
+- Source text is treated as untrusted data: it is shown literally, never rendered as Markdown or HTML, and never interpreted as an instruction. In the graph, labels are HTML-escaped before Plotly sees them. The optional Anthropic mode sends only the recommendation's reason texts and source IDs (never source bodies), marks them as data, and accepts the model's answer only if it passes the checks described under **Optional Anthropic mode**.
 - An "approval" is a stored record. No pricing change, message, ticket or payment is ever executed.
 
 A real deployment would need enterprise sign-in, permissions inherited from each source system at query time, encryption, and an independent security review.
@@ -233,14 +233,34 @@ pip install ruff
 ruff check .
 ```
 
+## Optional Anthropic mode
+
+Off by default. Everything in the app works, and every test passes, with no network, no key and no `anthropic` package.
+
+```bash
+pip install -r requirements-optional.txt
+```
+
+Then set `LLM_MODE=anthropic` and `ANTHROPIC_API_KEY` (in the environment or `.env`), and restart the app.
+
+- **What it does.** One thing: under the recommendation card in tab 5, **Reword with Claude** turns the card's cited reasons into a short plain-language brief. The model is called only when that button is clicked, once per card and role; the result is kept for the session. No other agent uses a model.
+- **What it sends.** The card's headline, risk level and source-supported reasons with their source IDs, inside `<facts>` tags marked as data. No source documents, excerpts or keys, and no free text people typed: a reviewer's note from a closed pilot (tab 6) is cut from the reasons before they are sent, though it stays on the card.
+- **How it is checked.** The brief is shown only if it has 1 to 5 sentences, every sentence cites at least one source the card itself cites, every number in a sentence appears in the headline or in the reasons whose sources that sentence cites (so a figure cannot be borrowed from another reason), and it has no links or markup. Sentences are shown with the card's own `[SRC-…]` citations. The checks catch new numbers and sources, not a changed meaning, and the caption says so: the card stays the authoritative output.
+- **Which model answered.** The caption names the model the response reports, which can differ from the configured one when a server-side fallback answered. A spinner shows while the request runs (up to about a minute with the timeout and one retry).
+- **When anything goes wrong** (package missing, key missing, timeout, network error, rate limit, rejected key, refusal, cut-off or malformed answer, failed check) the tab shows the offline brief, which repeats the card's cited reasons, with a warning saying why. A missing key or package is reported in the sidebar and the app runs offline.
+- **Request.** `client.beta.messages.create` on `claude-opus-5-5` (override with `DM_LLM_MODEL`), JSON output via `output_config.format`, effort `low`, a 30-second timeout and one retry. Server-side refusal fallbacks are on (`fallbacks: "default"`, beta `server-side-fallback-2026-07-01`), so if the model declines, the API retries on its recommended fallback model; remove them in `llm_gateway.py` if you prefer a plain refusal.
+- **Logging.** Only the mode, the stop reason, the duration and an error's class name are logged. Prompts, answers and keys are never logged.
+- **Tests** use fake clients only (`tests/test_llm_gateway.py`, `tests/test_brief.py`, `tests/test_ui_brief.py`). One test checks the SDK's error classes and is skipped when `anthropic` is not installed.
+
 ## Configuration (all optional)
 
 Copy `.env.example` to `.env` to change defaults. `.env` is git-ignored; never commit a key.
 
 | Variable | Default | Meaning |
 |----------|---------|---------|
-| `LLM_MODE` | `offline` | `anthropic` only takes effect when a key is also set (Stage 12; not built yet) |
-| `ANTHROPIC_API_KEY` | unset | Optional. Read from the environment only |
+| `LLM_MODE` | `offline` | `anthropic` only takes effect when a key is also set and the optional package is installed |
+| `ANTHROPIC_API_KEY` | unset | Optional. Read from the environment or `.env` only; never logged or shown |
+| `DM_LLM_MODEL` | `claude-opus-5-5` | Model for the Anthropic mode |
 | `DM_LOG_LEVEL` | `INFO` | `DEBUG`, `INFO`, `WARNING`, `ERROR` or `CRITICAL` |
 | `DM_DB_PATH` | `data/demo.db` | SQLite file, relative to the repo root |
 
@@ -258,6 +278,8 @@ src/decision_memory/
   seed.py                   fixture loader, idempotent seed, reset
   authz.py                  demo roles and MemoryView, the role-scoped read window
   provenance.py             [SRC-...] citations, evidence items, insufficient-evidence rule
+  llm_gateway.py            optional Anthropic gateway (offline by default) and its fallbacks
+  brief.py                  plain-language brief: offline template, prompt, checks
   audit.py                  audited capture, review, approval and pilot-tracking writes
   agents/capture_agent.py   Agent 1: transcript parser and confirm-and-save
   agents/memory_agent.py    Agent 2: role-filtered decision graph (NetworkX projection)
@@ -294,7 +316,8 @@ docs/                       product spec and implementation plan
 ## Not available yet
 
 - **Demo reset button**: the sidebar button is still a disabled placeholder; use `python scripts/reset_demo.py`.
-- The optional Anthropic mode (Stage 12), the demo script and the in-app reset button (Stage 14).
+- The demo script and the in-app reset button (Stage 14).
+- The Anthropic mode was tested with fake clients only; no request to the live API was made while building it. Its checks catch invented or borrowed numbers and unknown sources, not a misleading paraphrase that reuses a cited reason's own numbers: read the brief against the card.
 - The guide does not check off the Hook, and its live checks describe the app's state, not what the presenter has shown: a decision captured in an earlier run already counts for step 2. Reset the demo database before a rehearsal. Step 6 counts only a pilot for the question on screen.
 - Governance tracks against the plan fixed at approval. Milestone states are recalculated only when someone records a KPI or closes the pilot, so an overdue milestone shows as at risk only after the next entry. Tracker days count from the approval date, not from the proposal's effective quarter.
 - The open-pilot check compares question text, so the same proposal phrased differently can be approved twice.

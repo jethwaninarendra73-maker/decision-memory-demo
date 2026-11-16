@@ -9,14 +9,16 @@ from __future__ import annotations
 import os
 from collections.abc import Mapping
 from pathlib import Path
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, SecretStr, ValidationError
+from pydantic import BaseModel, ConfigDict, SecretStr, StringConstraints, ValidationError
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_ENV_FILE = REPO_ROOT / ".env"
 
 LlmMode = Literal["offline", "anthropic"]
+# Model for the optional Anthropic mode (Stage 12); DM_LLM_MODEL overrides it.
+DEFAULT_LLM_MODEL = "claude-opus-5-5"
 LogLevel = Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
 
 
@@ -34,6 +36,9 @@ class Settings(BaseModel):
     fixtures_dir: Path = REPO_ROOT / "data" / "fixtures"
     llm_mode: LlmMode = "offline"
     anthropic_api_key: SecretStr | None = None
+    llm_model: Annotated[str, StringConstraints(min_length=1, pattern=r"^[a-z0-9][a-z0-9.-]*$")] = (
+        DEFAULT_LLM_MODEL
+    )
     log_level: LogLevel = "INFO"
 
     @property
@@ -84,6 +89,8 @@ def load_settings(
         fields["llm_mode"] = mode.lower()
     if (key := get("ANTHROPIC_API_KEY")) is not None:
         fields["anthropic_api_key"] = key
+    if (model := get("DM_LLM_MODEL")) is not None:
+        fields["llm_model"] = model
     if (level := get("DM_LOG_LEVEL")) is not None:
         fields["log_level"] = level.upper()
     if (db := get("DM_DB_PATH")) is not None:

@@ -90,6 +90,8 @@ NOTHING_TO_APPROVE = (
     "Nothing to approve: only a recommendation that names a rate (a phased pilot or proceed) "
     "can be approved or rejected."
 )
+# Marks the free text a reviewer typed when closing a pilot (kept out of LLM prompts).
+REVIEWER_NOTE_LABEL = "Reviewer note:"
 # Same text as the seeded fixtures' first line, so generated records read as synthetic.
 SYNTHETIC_MARKER = "[SYNTHETIC DEMO DATA: fictional company, people and numbers]"
 _OPEN = (ProposalStatus.APPROVED, ProposalStatus.IN_PROGRESS)
@@ -971,7 +973,7 @@ def close_pilot(
             verdict_line,
         ]
         if note:
-            lines.append(f"Reviewer note: {note}")
+            lines.append(f"{REVIEWER_NOTE_LABEL} {note}")
         source, spans = _generated_source(
             repo,
             title=f"Close report for {proposal.id}",
@@ -1001,7 +1003,7 @@ def close_pilot(
                 explanation=(
                     f"Closed after {n} of {weeks} weekly checks (demo-entered values, "
                     f"{scope}, quarter-equivalent). {suggestion.reason}{overridden}"
-                    + (f" Reviewer note: {note}" if note else "")
+                    + (f" {REVIEWER_NOTE_LABEL} {note}" if note else "")
                 ),
                 source_refs=[_ref(source, spans[result_at]), _ref(source, spans[result_at + 1])],
                 created_at=now,

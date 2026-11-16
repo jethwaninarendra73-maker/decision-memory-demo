@@ -152,4 +152,4 @@ The guided demo panel (Stage 11, `demo_guide.py` and `ui/guide.py`) follows thes
 - [ ] No outbound calls, emails, tickets, price changes or payments anywhere in the code.
 - [ ] Instructions embedded in source documents are treated as text and have no effect.
 - [ ] No secrets in the repo; `.env`, `.venv`, `data/*.db` are git-ignored.
-- [ ] Optional Anthropic mode (if built) falls back to offline on missing key, timeout or validation failure; tests use mocks only.
+- [ ] Optional Anthropic mode (if built) falls back to offline on missing key, timeout or validation failure; tests use mocks only. (Stage 12: `llm_gateway.py` + `brief.py`; the model only rewords tab 5's cited reasons into a brief, on request, and the brief is checked against the card's sources and numbers.)

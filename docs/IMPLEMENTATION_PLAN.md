@@ -1,6 +1,6 @@
 # Implementation Plan — Decision Memory MVP
 
-Status: **Stage 11 complete (guided six-step demo panel above the tabs: each step opens its tab, lists actions and a talk track built from on-screen figures, and shows live checks for the active role; the synthetic-data banner at the top of the page and of every tab; full walkthrough done in the browser; review fixes: step 6 checks only the pilot for the question on screen, hiding the guide keeps its step; 640 tests). Next: Stage 12.**
+Status: **Stage 12 complete (optional Anthropic mode behind LLM_MODE + key + optional package: the model only rewords tab 5's cited reasons into a plain-language brief on request, accepted only if every sentence cites the card's sources and adds no number; every failure falls back to the offline brief with a notice; offline mode unchanged; fake clients only; review fixes: numbers checked against the reasons each sentence cites, reviewer notes kept out of the prompt, the answering model named; 682 tests, 681 + 1 skipped without the package). Next: Stage 13.**
 Each stage is one Claude Code prompt from the build-prompt pack. Implement ONE stage, get its gate green, commit, then stop.
 
 ## Stages

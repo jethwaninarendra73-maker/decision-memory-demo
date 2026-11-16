@@ -21,6 +21,8 @@ from decision_memory.agents.recommendation_agent import (
     rules_summary,
 )
 from decision_memory.authz import ROLE_LABELS, MemoryView
+from decision_memory.brief import Brief, brief_key, briefable, offline_brief, write_brief
+from decision_memory.llm_gateway import Gateway, OfflineGateway
 from decision_memory.models import (
     ImpactAssessment,
     OptionCheck,
@@ -45,6 +47,14 @@ NO_QUESTION_MESSAGE = (
 REFUSED_MESSAGE = (
     f"{INSUFFICIENT_EVIDENCE_TEXT} The recommendation cites evidence that could not be "
     "verified for this role, so it is not shown."
+)
+BRIEF_KEY = "recommendation_briefs"  # brief_key -> Brief written by the model
+BRIEF_BUTTON_KEY = "recommendation_brief_llm"
+BRIEF_CHECKS = (
+    "The card above is the recommendation; the brief only rewords its cited reasons. A "
+    "model's brief is shown only if every sentence cites sources the card cites and uses "
+    "no number missing from the reasons it cites. The checks do not catch a changed "
+    "meaning: read it against the card."
 )
 HEADLINES: dict[RecommendationType, str] = {
     RecommendationType.PHASED_PILOT: "Phased pilot",
@@ -140,6 +150,50 @@ def render_card(view: MemoryView, result: RecommendationResult) -> None:
             )
 
 
+def render_brief_sentences(view: MemoryView, rec: Recommendation, brief: Brief) -> None:
+    """Each sentence with the card's own citations for the sources it names."""
+    refs = {}
+    for reason in rec.reasons:
+        for ref in reason.source_refs:
+            refs.setdefault(ref.source_id, []).append(ref)
+    lines = [f"**{escape_markdown(brief.headline)}**"]
+    for sentence in brief.sentences:
+        lines.append(f"- {escape_markdown(sentence.text)}")
+        for source_id in sentence.source_ids:
+            for ref in refs.get(source_id, [])[:1]:  # the first excerpt the card cites
+                cited = resolve_ref(view, ref)
+                if cited is not None:
+                    lines.append(f"    - {cited.format_markdown()}")
+    st.markdown("\n".join(lines))
+
+
+def render_brief(view: MemoryView, rec: Recommendation, gateway: Gateway) -> Brief | None:
+    """Anthropic mode only: a plain-language brief of the card, reworded by the model on
+    request and checked against the card. Offline mode shows nothing new. Returns the
+    brief shown."""
+    if gateway.mode != "anthropic" or not briefable(rec):
+        return None
+    head = headline(rec)
+    st.markdown("**Plain-language brief**")
+    key = brief_key(rec, head, view.role.value)
+    stored: dict[str, Brief] = st.session_state.setdefault(BRIEF_KEY, {})
+    if st.button(f"Reword with Claude ({gateway.model})", key=BRIEF_BUTTON_KEY):
+        with st.spinner(f"Rewording with Claude ({gateway.model})…"):
+            stored[key] = write_brief(rec, head, gateway)
+    shown = stored.get(key) or offline_brief(rec, head)
+    if shown.notice:
+        st.warning(shown.notice)
+    render_brief_sentences(view, rec, shown)
+    if shown.written_by == "anthropic":
+        st.caption(f"Reworded by {shown.model} and checked against the card. {BRIEF_CHECKS}")
+    elif not shown.notice:
+        st.caption(
+            "Written by the offline template from the card's cited reasons. Click the "
+            "button to have Claude reword it (one request)."
+        )
+    return shown
+
+
 def render_recommendation(
     view: MemoryView,
     search: SearchResult | None,
@@ -148,6 +202,7 @@ def render_recommendation(
     scenarios: ScenarioSet | None,
     now: datetime,
     rules: RecommendationRules = DEFAULT_RULES,
+    gateway: Gateway | None = None,
 ) -> RecommendationResult | None:
     """Agent 5 tab. Returns the result shown, or None when there is nothing to show."""
     st.subheader("Agent 5 · Recommendation")
@@ -168,6 +223,7 @@ def render_recommendation(
         if rec.recommended_rate is None:
             st.warning(result.message)
         render_card(view, result)
+        render_brief(view, rec, gateway or OfflineGateway())
 
     if result.options:
         st.markdown("**How each option was judged**")

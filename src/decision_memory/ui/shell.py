@@ -16,6 +16,7 @@ from decision_memory.authz import (
     parse_role,
 )
 from decision_memory.config import Settings
+from decision_memory.llm_gateway import Gateway, make_gateway
 from decision_memory.models import (
     ImpactAssessment,
     Proposal,
@@ -78,14 +79,20 @@ def select_role() -> Role:
     return role
 
 
-def render_sidebar(settings: Settings) -> Role:
+def render_sidebar(settings: Settings, gateway: Gateway, notice: str | None) -> Role:
     with st.sidebar:
         st.header("Demo controls")
         role = select_role()
         st.toggle("Guided demo", value=True, key=GUIDE_ON_KEY, help=GUIDE_HELP)
-        st.markdown(f"**Mode:** `{settings.effective_llm_mode}` (deterministic baseline)")
-        if settings.llm_fallback_reason:
-            st.info(f"{settings.llm_fallback_reason} Running offline.")
+        if gateway.mode == "anthropic":
+            st.markdown(
+                f"**Mode:** `anthropic` (`{gateway.model}`, used only to reword the brief in "
+                "tab 5, on request; everything else is deterministic)"
+            )
+        else:
+            st.markdown("**Mode:** `offline` (deterministic baseline)")
+        if notice:
+            st.info(f"{notice} Running offline.")
         st.button(
             "Demo reset",
             key="demo_reset",
@@ -119,7 +126,8 @@ def render_app(settings: Settings, repo: Repository) -> None:
     render_banner()
     st.title(settings.app_name)
     st.caption(f"Demo question: “{DEMO_QUESTION}”")
-    role = render_sidebar(settings)
+    gateway, notice = make_gateway(settings)
+    role = render_sidebar(settings, gateway, notice)
     view = MemoryView(repo, role)
 
     guide = st.container()  # drawn above the tabs, filled after them
@@ -144,7 +152,7 @@ def render_app(settings: Settings, repo: Repository) -> None:
                 scenarios = render_scenarios(view, proposal, now)
             elif agent.key == "recommendation":
                 recommendation = render_recommendation(
-                    view, search, proposal, impact, scenarios, now
+                    view, search, proposal, impact, scenarios, now, gateway=gateway
                 )
             elif agent.key == "governance":
                 render_governance(repo, view, proposal, scenarios, recommendation, now)
