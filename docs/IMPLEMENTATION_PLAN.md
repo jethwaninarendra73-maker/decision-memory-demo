@@ -1,6 +1,6 @@
 # Implementation Plan — Decision Memory MVP
 
-Status: **Stage 14 complete (demo kit: `docs/DEMO_SCRIPT.md` and `docs/DEMO_CHECKLIST.md`; the sidebar Demo reset button with confirmation, a byte-identical baseline and a "reset done" page that clears on-screen inputs; tests that keep the script in step with the app; the six steps rehearsed click by click in the running app, not timed with a person speaking; 833 passed + 1 skipped without the optional package). Next: Stage 15.**
+Status: **Stage 15 complete: the release gate passes for a local demo. All 28 acceptance criteria in PRODUCT_SPEC.md §6 and the six CLAUDE.md quality gates were re-verified on 2026-11-17 (docs/RELEASE_SCORECARD.md; 846 passed + 1 skipped without the optional package; with it installed, the skipped test also passes); next steps and the backlog are in docs/HANDOFF.md. Not verified: a timed rehearsal by a person, a backup recording, a run with Wi-Fi off, the live Anthropic API.**
 Each stage is one Claude Code prompt from the build-prompt pack. Implement ONE stage, get its gate green, commit, then stop.
 
 ## Stages

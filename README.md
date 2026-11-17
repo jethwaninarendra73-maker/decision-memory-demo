@@ -4,7 +4,7 @@
 
 An offline-first Streamlit app that walks a Pricing Director through one question, *"Should we increase the freight surcharge by 5% for European customers next quarter?"*, using six logical agents: Decision Capture, Institutional Memory, Impact Analysis, Scenario Simulation, Recommendation and Governance.
 
-**Build status: Stage 14 of 15.** All six agents work end to end. Agent 1 captures a decision from a synthetic transcript. Agent 2 answers the question with ranked, cited precedents and a decision graph. Agents 3 to 5 assess impact, compare +3/+5/+7% and recommend a guarded option. Agent 6 records a simulated approval, tracks the pilot for 60 days and writes its outcome back to memory. Everything is filtered for the selected demo role, cited, and audited. A guided panel walks a presenter through the five-minute demo. An optional Anthropic mode can reword the recommendation into a checked plain-language brief; everything else stays deterministic. To present it, follow [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md) and [docs/DEMO_CHECKLIST.md](docs/DEMO_CHECKLIST.md). The QA results are in [docs/QA_REPORT.md](docs/QA_REPORT.md). See [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md).
+**Build status: all 15 stages complete; the release gate passes for a local demo.** All six agents work end to end. Agent 1 captures a decision from a synthetic transcript. Agent 2 answers the question with ranked, cited precedents and a decision graph. Agents 3 to 5 assess impact, compare +3/+5/+7% and recommend a guarded option. Agent 6 records a simulated approval, tracks the pilot for 60 days and writes its outcome back to memory. Everything is filtered for the selected demo role, cited, and audited. A guided panel walks a presenter through the five-minute demo. An optional Anthropic mode can reword the recommendation into a checked plain-language brief; everything else stays deterministic. To present it, follow [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md) and [docs/DEMO_CHECKLIST.md](docs/DEMO_CHECKLIST.md). The QA results are in [docs/QA_REPORT.md](docs/QA_REPORT.md), the release gate in [docs/RELEASE_SCORECARD.md](docs/RELEASE_SCORECARD.md), and what to do next in [docs/HANDOFF.md](docs/HANDOFF.md). See [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md).
 
 ## Requirements
 
@@ -211,6 +211,7 @@ In the seeded data, `SRC-019` (and so decision `DEC-015`) is visible to the Rest
 **Role switching is for demonstration only. It is not authentication or access control.**
 
 - Anyone who can open the app can pick any role, or put `?role=restricted_exec` in the address. There are no user accounts, passwords or sessions.
+- The app listens on `localhost` only (`server.address` in `.streamlit/config.toml`), so other machines on the network cannot open it. This also stops Streamlit's start-up banner from looking up the machine's network and public IP addresses, so starting the app makes no outside call.
 - The filter shows what a correctly implemented permission model would hide. It does not protect the data: the SQLite file and the fixture files hold every record in plain text for anyone with access to this folder.
 - "Sources" are fictional text files. The `mock://` references are labels, not links, and nothing connects to Teams, Jira, SharePoint, email or ServiceNow.
 - Source text is treated as untrusted data: it is shown literally, never rendered as Markdown or HTML, and never interpreted as an instruction. In the graph, labels are HTML-escaped before Plotly sees them. The optional Anthropic mode sends only the recommendation's reason texts and source IDs (never source bodies), marks them as data, and accepts the model's answer only if it passes the checks described under **Optional Anthropic mode**.
@@ -316,7 +317,8 @@ scripts/seed_demo.py        load the baseline
 scripts/reset_demo.py       wipe and rebuild the baseline
 data/fixtures/              synthetic fixtures (committed)
 tests/                      pytest suite (offline, no API key)
-docs/                       product spec, implementation plan, QA report, demo script and checklist
+docs/                       product spec, implementation plan, QA report, demo script and checklist,
+                            release scorecard, handoff
 ```
 
 ## Troubleshooting
@@ -332,8 +334,8 @@ docs/                       product spec, implementation plan, QA report, demo s
 
 ## Not available yet
 
-- **A backup recording** of the demo: record one from your own rehearsal (see the checklist).
-- The demo script was checked click by click in the running app, but not timed with a person speaking. Rehearse it aloud.
+- **A narrated backup recording** of the demo: record one from your own rehearsal (see the checklist). Until then, [docs/demo_backup/slides.html](docs/demo_backup/slides.html) shows still frames of one complete run, each under the synthetic-data label.
+- The demo script was checked click by click in the running app and its click times were measured, but it was not timed with a person speaking. Rehearse it aloud.
 - The Anthropic mode was tested with fake clients only; no request to the live API was made while building it. Its checks catch invented or borrowed numbers and unknown sources, not a misleading paraphrase that reuses a cited reason's own numbers: read the brief against the card.
 - The guide does not check off the Hook, and its live checks describe the app's state, not what the presenter has shown: a decision captured in an earlier run already counts for step 2. Reset the demo data before a rehearsal (sidebar **Demo reset**). Step 6 counts only a pilot for the question on screen.
 - Governance tracks against the plan fixed at approval. Milestone states are recalculated only when someone records a KPI or closes the pilot, so an overdue milestone shows as at risk only after the next entry. Tracker days count from the approval date, not from the proposal's effective quarter.

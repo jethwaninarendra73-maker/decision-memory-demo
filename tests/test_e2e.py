@@ -3,8 +3,9 @@ role journeys around it, a hostile document through every tab, and the server it
 
 Everything runs with no API key and on a temporary database. The in-process tests run
 under the conftest network guard. The server test starts `streamlit run` as a separate
-process, which that guard does not cover: it gets the offline environment, no key and
-usage statistics switched off, and only talks to 127.0.0.1. After the demo the reset must
+process, so it loads the same kind of guard into that process (`SERVER_GUARD`, through
+Python's `sitecustomize` hook): any connection or lookup that would leave the machine is
+refused and recorded, and the test fails if one was tried. After the demo the reset must
 restore the baseline byte for byte.
 """
 
@@ -244,6 +245,57 @@ def test_a_hostile_document_is_text_everywhere_and_changes_nothing(
 # --- the server -----------------------------------------------------------------------
 
 
+# Loaded into the server process by Python at start-up (`sitecustomize` on PYTHONPATH).
+# It mirrors the conftest guard: refuse and record anything that would leave this machine.
+SERVER_GUARD = """
+import os, socket
+
+LOCAL = {"localhost", "127.0.0.1", "::1", ""}
+LOG = os.environ["DM_TEST_NETWORK_LOG"]
+
+
+def _note(line):
+    with open(LOG, "a", encoding="utf-8") as out:
+        out.write(line + "\\n")
+
+
+def _host(address):
+    return str(address[0]) if isinstance(address, tuple) and address else str(address)
+
+
+_connect, _connect_ex = socket.socket.connect, socket.socket.connect_ex
+_getaddrinfo = socket.getaddrinfo
+
+
+def _check(sock, address):
+    if sock.family != getattr(socket, "AF_UNIX", None) and _host(address) not in LOCAL:
+        _note("blocked connect " + _host(address))
+        raise ConnectionRefusedError("offline test server: " + _host(address))
+
+
+def connect(sock, address):
+    _check(sock, address)
+    return _connect(sock, address)
+
+
+def connect_ex(sock, address):
+    _check(sock, address)
+    return _connect_ex(sock, address)
+
+
+def getaddrinfo(host, *args, **kwargs):
+    if host is not None and str(host) not in LOCAL:
+        _note("blocked lookup " + str(host))
+        raise socket.gaierror("offline test server: " + str(host))
+    return _getaddrinfo(host, *args, **kwargs)
+
+
+socket.socket.connect, socket.socket.connect_ex = connect, connect_ex
+socket.getaddrinfo = getaddrinfo
+_note("guard loaded")
+"""
+
+
 def _free_port() -> int:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
         probe.bind(("127.0.0.1", 0))
@@ -252,7 +304,18 @@ def _free_port() -> int:
 
 def test_the_streamlit_server_starts_offline_with_no_key(seeded_db: Path, tmp_path: Path) -> None:
     port = _free_port()
-    env = {**os.environ, **OFFLINE_ENV, "DM_DB_PATH": str(seeded_db)}
+    guard_dir, network_log = tmp_path / "guard", tmp_path / "network.log"
+    guard_dir.mkdir()
+    (guard_dir / "sitecustomize.py").write_text(SERVER_GUARD, encoding="utf-8")
+    env = {
+        **os.environ,
+        **OFFLINE_ENV,
+        "DM_DB_PATH": str(seeded_db),
+        "DM_TEST_NETWORK_LOG": str(network_log),
+        "PYTHONPATH": os.pathsep.join(
+            [str(guard_dir), *filter(None, [os.environ.get("PYTHONPATH")])]
+        ),
+    }
     log = tmp_path / "server.log"
     with log.open("w") as out:
         server = subprocess.Popen(
@@ -279,3 +342,32 @@ def test_the_streamlit_server_starts_offline_with_no_key(seeded_db: Path, tmp_pa
             server.terminate()
             server.wait(timeout=10)
     assert "Traceback" not in log.read_text()
+    # The guard was active in the server, and the server tried nothing outside this machine.
+    assert network_log.read_text(encoding="utf-8").splitlines() == ["guard loaded"]
+
+
+def test_the_server_guard_refuses_and_records_an_outside_call(tmp_path: Path) -> None:
+    # The guard itself, in a child process exactly as the server loads it.
+    guard_dir, network_log = tmp_path / "guard", tmp_path / "network.log"
+    guard_dir.mkdir()
+    (guard_dir / "sitecustomize.py").write_text(SERVER_GUARD, encoding="utf-8")
+    probe = (
+        "import socket\n"
+        "for call in (lambda: socket.getaddrinfo('example.com', 443),\n"
+        "             lambda: socket.socket().connect(('192.0.2.1', 443))):\n"
+        "    try:\n"
+        "        call()\n"
+        "    except OSError:\n"
+        "        pass\n"
+    )
+    env = {
+        **os.environ,
+        "DM_TEST_NETWORK_LOG": str(network_log),
+        "PYTHONPATH": str(guard_dir),
+    }
+    subprocess.run([sys.executable, "-c", probe], env=env, check=True, timeout=30)
+    assert network_log.read_text(encoding="utf-8").splitlines() == [
+        "guard loaded",
+        "blocked lookup example.com",
+        "blocked connect 192.0.2.1",
+    ]

@@ -192,3 +192,36 @@ def test_the_kit_describes_the_reset_the_app_has(run_app) -> None:
         assert command in SCRIPT and command in CHECKLIST
     assert "python -m pytest -q" in CHECKLIST
     assert "No decision captured in the app yet." in CHECKLIST  # step 2's check at baseline
+
+
+def test_the_backup_storyboard_lists_every_frame_in_order() -> None:
+    backup = DOCS / "demo_backup"
+    index = (backup / "README.md").read_text(encoding="utf-8")
+    assert SYNTHETIC_BANNER in index
+    listed = re.findall(r"\]\(([\w-]+\.jpg)\)", index)
+    on_disk = sorted(path.name for path in backup.glob("*.jpg"))
+    assert listed == on_disk and len(listed) == 10  # every frame indexed, in step order
+    titles = [step.title for step in STEPS]
+    steps = re.findall(r"\| (\d)\. ([^|]+?) \|", index)
+    assert [titles[int(n) - 1] for n, _ in steps] == [title.strip() for _, title in steps]
+    assert {int(n) for n, _ in steps} == set(range(1, len(STEPS) + 1))  # every step shown
+    for name in on_disk:  # real images, not placeholders
+        assert (backup / name).read_bytes()[:3] == b"\xff\xd8\xff", name
+
+
+def test_the_backup_slides_show_every_frame_under_the_label_and_load_nothing_remote() -> None:
+    backup = DOCS / "demo_backup"
+    slides = (backup / "slides.html").read_text(encoding="utf-8")
+    # The label sits outside the frame, so it is on screen for every slide.
+    label = re.search(r'<div class="label"[^>]*>(.*?)</div>', slides, re.DOTALL)
+    assert label and SYNTHETIC_BANNER in label.group(1)
+    frames = re.findall(r'\["([\w-]+\.jpg)", "(\d)\. ([^"]+)"', slides)
+    assert [name for name, _, _ in frames] == sorted(p.name for p in backup.glob("*.jpg"))
+    assert all(STEPS[int(n) - 1].title == title for _, n, title in frames)
+    # Offline: no script, style, font or image from anywhere but this folder.
+    assert not re.search(r"""(?:src|href)\s*=\s*["']?(?:https?:)?//""", slides)
+    assert "@import" not in slides and "url(" not in slides
+    # Every pointer to the backup goes to the slides, which carry the label.
+    for doc in (SCRIPT, CHECKLIST):
+        assert "demo_backup/slides.html" in doc
+    assert "(slides.html)" in (backup / "README.md").read_text(encoding="utf-8")

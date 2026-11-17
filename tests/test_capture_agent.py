@@ -587,6 +587,21 @@ def test_same_transcript_cannot_be_captured_twice(seeded: Repository) -> None:
     assert seeded.count(Decision) == 17 and seeded.count(SourceDocument) == 23
 
 
+def test_a_hidden_copy_of_the_transcript_is_treated_as_missing(seeded: Repository) -> None:
+    # The executive captured it for their eyes only. The analyst, who cannot see that
+    # copy, gets exactly what they would get if it did not exist: their own capture.
+    hidden = confirm(seeded, role=Role.RESTRICTED_EXEC, access_roles=[Role.RESTRICTED_EXEC])
+    mine = confirm(seeded, role=Role.ANALYST, access_roles=[Role.ANALYST])
+    assert mine.source.id != hidden.source.id and mine.decision.id != hidden.decision.id
+    analyst = MemoryView(seeded, Role.ANALYST)
+    assert analyst.source(hidden.source.id) is None
+    assert analyst.source(mine.source.id) is not None
+    with pytest.raises(DuplicateCaptureError):  # a copy the role can see still counts
+        confirm(seeded, role=Role.ANALYST, access_roles=[Role.ANALYST])
+    with pytest.raises(DuplicateCaptureError):  # and the executive sees both
+        confirm(seeded, role=Role.RESTRICTED_EXEC, access_roles=[Role.RESTRICTED_EXEC])
+
+
 def test_draft_from_another_transcript_is_refused(seeded: Repository, seeded_db: Path) -> None:
     before = dump_database(seeded_db)
     with pytest.raises(CaptureError, match="does not match"):

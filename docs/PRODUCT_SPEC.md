@@ -108,48 +108,50 @@ The guided demo panel (Stage 11, `demo_guide.py` and `ui/guide.py`) follows thes
 
 ## 6. Acceptance criteria
 
+All 28 criteria were verified at the Stage 15 release gate on 2026-11-17; the evidence and the caveats are in [RELEASE_SCORECARD.md](RELEASE_SCORECARD.md).
+
 **Baseline (offline, no API key, single command)**
-- [ ] `streamlit run app.py` starts with no network and no `ANTHROPIC_API_KEY`.
-- [ ] Seed loads ≥ 12 fictional historical freight pricing decisions (mostly European, 1–2 non-European), ≥ 3 source types, a mix of successful, partial and failed outcomes, and at least one contradictory or poor precedent.
-- [ ] `seed_demo.py` is idempotent; `reset_demo.py` restores byte-identical baseline query results.
-- [ ] Every page with numbers or advice shows the synthetic-data banner ("SYNTHETIC DATA — NOT A PREDICTION OR AUTHORIZED BUSINESS DECISION": at the top of the page and of every stage tab, Stage 11).
+- [x] `streamlit run app.py` starts with no network and no `ANTHROPIC_API_KEY`.
+- [x] Seed loads ≥ 12 fictional historical freight pricing decisions (mostly European, 1–2 non-European), ≥ 3 source types, a mix of successful, partial and failed outcomes, and at least one contradictory or poor precedent.
+- [x] `seed_demo.py` is idempotent; `reset_demo.py` restores byte-identical baseline query results.
+- [x] Every page with numbers or advice shows the synthetic-data banner ("SYNTHETIC DATA — NOT A PREDICTION OR AUTHORIZED BUSINESS DECISION": at the top of the page and of every stage tab, Stage 11).
 
 **Capture (Agent 1)**
-- [ ] The demo transcript yields one decision with owner, date, rationale, risk and exact evidence offsets; distractor discussion produces no decision.
-- [ ] Missing or uncertain fields are flagged, not guessed.
-- [ ] Only confirmed drafts are stored; confirmation writes an `AuditEvent`.
+- [x] The demo transcript yields one decision with owner, date, rationale, risk and exact evidence offsets; distractor discussion produces no decision.
+- [x] Missing or uncertain fields are flagged, not guessed.
+- [x] Only confirmed drafts are stored; confirmation writes an `AuditEvent`.
 
 **Memory and retrieval (Agent 2 + search)**
-- [ ] Graph has typed edges and no dangling references; it is rebuilt from SQLite.
-- [ ] The Europe surcharge question returns the intended top precedents with score components and `[SRC-…]` citations.
-- [ ] Unrelated regions rank lower; an unknown topic returns "insufficient verifiable evidence".
+- [x] Graph has typed edges and no dangling references; it is rebuilt from SQLite.
+- [x] The Europe surcharge question returns the intended top precedents with score components and `[SRC-…]` citations.
+- [x] Unrelated regions rank lower; an unknown topic returns "insufficient verifiable evidence".
 
 **Permissions**
-- [ ] Filtering happens before retrieval and recommendation assembly.
-- [ ] For an unauthorised role, a `restricted_exec` record never appears in search results, graph nodes/labels/edges, citations, impact items or recommendation reasons.
+- [x] Filtering happens before retrieval and recommendation assembly.
+- [x] For an unauthorised role, a `restricted_exec` record never appears in search results, graph nodes/labels/edges, citations, impact items or recommendation reasons.
 
 **Impact (Agent 3)**
-- [ ] Lists affected teams, systems, customer groups, risks, cost range and effort, each marked `source_supported` or `assumed_for_demo` with confidence and rationale.
-- [ ] Flags high-volume contract customers and competitive response in Germany from retrieved precedents.
+- [x] Lists affected teams, systems, customer groups, risks, cost range and effort, each marked `source_supported` or `assumed_for_demo` with confidence and rationale.
+- [x] Flags high-volume contract customers and competitive response in Germany from retrieved precedents.
 
 **Scenarios (Agent 4)**
-- [ ] Defaults compute +$8.4M / +$14.0M / +$18.8M revenue and +$5.58M / +$9.50M / +$12.86M margin.
-- [ ] Editing any assumption recomputes instantly; formulas and inputs are shown; no headline number is hard-coded.
-- [ ] Retention is shown as a labelled proxy; SLA shows "unchanged / not modeled".
+- [x] Defaults compute +$8.4M / +$14.0M / +$18.8M revenue and +$5.58M / +$9.50M / +$12.86M margin.
+- [x] Editing any assumption recomputes instantly; formulas and inputs are shown; no headline number is hard-coded.
+- [x] Retention is shown as a labelled proxy; SLA shows "unchanged / not modeled".
 
 **Recommendation (Agent 5)**
-- [ ] Default output is a phased +5% pilot; +7% is excluded with the guardrail reason; +3% is noted as lower uplift.
-- [ ] Every reason cites a visible source; missing evidence produces "insufficient evidence to recommend".
-- [ ] Output is advisory and names the human approval requirement.
+- [x] Default output is a phased +5% pilot; +7% is excluded with the guardrail reason; +3% is noted as lower uplift.
+- [x] Every reason cites a visible source; missing evidence produces "insufficient evidence to recommend".
+- [x] Output is advisory and names the human approval requirement.
 
 **Governance (Agent 6)**
-- [ ] `analyst` cannot approve; `pricing_director` can (simulated, labelled as such).
-- [ ] Approval creates a 60-day tracker with milestones and 8 weekly KPI slots.
-- [ ] Entering a KPI update and closing the pilot attaches an `Outcome` to the decision, visible in graph and precedent search after refresh.
-- [ ] Invalid state transitions are refused; every change is audited.
+- [x] `analyst` cannot approve; `pricing_director` can (simulated, labelled as such).
+- [x] Approval creates a 60-day tracker with milestones and 8 weekly KPI slots.
+- [x] Entering a KPI update and closing the pilot attaches an `Outcome` to the decision, visible in graph and precedent search after refresh.
+- [x] Invalid state transitions are refused; every change is audited.
 
 **Safety**
-- [ ] No outbound calls, emails, tickets, price changes or payments anywhere in the code.
-- [ ] Instructions embedded in source documents are treated as text and have no effect.
-- [ ] No secrets in the repo; `.env`, `.venv`, `data/*.db` are git-ignored.
-- [ ] Optional Anthropic mode (if built) falls back to offline on missing key, timeout or validation failure; tests use mocks only. (Stage 12: `llm_gateway.py` + `brief.py`; the model only rewords tab 5's cited reasons into a brief, on request, and the brief is checked against the card's sources and numbers.)
+- [x] No outbound calls, emails, tickets, price changes or payments anywhere in the code.
+- [x] Instructions embedded in source documents are treated as text and have no effect.
+- [x] No secrets in the repo; `.env`, `.venv`, `data/*.db` are git-ignored.
+- [x] Optional Anthropic mode (if built) falls back to offline on missing key, timeout or validation failure; tests use mocks only. (Stage 12: `llm_gateway.py` + `brief.py`; the model only rewords tab 5's cited reasons into a brief, on request, and the brief is checked against the card's sources and numbers.)

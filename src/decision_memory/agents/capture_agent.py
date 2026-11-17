@@ -545,7 +545,9 @@ def confirm_capture(
             raise CaptureError("The draft does not match this transcript. Extract it again.")
 
     with repo.transaction():
-        if repo.find(SourceDocument, body=transcript):
+        # Only copies this role can see count. Refusing because of a copy the role cannot
+        # see would reveal that a hidden record exists; it must look like a missing one.
+        if repo.find_visible(SourceDocument, role, body=transcript):
             raise DuplicateCaptureError("This transcript has already been captured.")
         source_id = repo.next_id(SourceDocument)
         source = repo.add(

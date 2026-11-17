@@ -1,6 +1,6 @@
 # QA report: Stage 13
 
-**Result: the Stage 13 and Stage 14 gates pass.** The full suite runs offline, with no API key and on temporary databases: 833 passed and 1 skipped without the optional `anthropic` package (806 at the end of Stage 13; Stage 14 added the reset and demo-kit tests). With the package, 768 passed during Stage 13; that run was not repeated after later tests were added. The five-minute demo was rehearsed in the running app (see Stage 14 rehearsal). Every acceptance criterion in `docs/PRODUCT_SPEC.md` §6 maps to automated tests below, and the gaps found during QA are fixed or listed under Open items.
+**Result: the Stage 13 and Stage 14 gates pass.** The Stage 15 release gate re-checked this matrix on its own and is recorded in [RELEASE_SCORECARD.md](RELEASE_SCORECARD.md). The full suite runs offline, with no API key and on temporary databases: 833 passed and 1 skipped without the optional `anthropic` package (806 at the end of Stage 13; Stage 14 added the reset and demo-kit tests). With the package, 768 passed during Stage 13; that run was not repeated after later tests were added. The five-minute demo was rehearsed in the running app (see Stage 14 rehearsal). Every acceptance criterion in `docs/PRODUCT_SPEC.md` §6 maps to automated tests below, and the gaps found during QA are fixed or listed under Open items.
 
 All figures in this report come from runs on 16 November 2026, at commit `42a265f` plus the Stage 13 changes. All data is synthetic.
 
@@ -71,7 +71,7 @@ $ shasum -a 256 data/demo.db                     # before and after every run ab
 | Criterion | Evidence (tests) | Status |
 |-----------|------------------|--------|
 | **Baseline** | | |
-| App starts with no network and no key | `test_e2e::test_the_streamlit_server_starts_offline_with_no_key`; every in-process app test under the network guard; `test_smoke::test_app_renders_without_exception` | Pass |
+| App starts with no network and no key | `test_e2e::test_the_streamlit_server_starts_offline_with_no_key` (the server process runs under a network guard and must try no outside call), `test_the_server_guard_refuses_and_records_an_outside_call`; every in-process app test under the network guard; `test_smoke::test_app_renders_without_exception` | Pass |
 | ≥ 12 decisions, ≥ 3 source types, outcome mix, contradictory/poor precedent | `test_seed::test_at_least_twelve_decisions_mostly_european`, `test_three_evidence_types_are_seeded`, `test_outcomes_mix_success_partial_and_failure`, `test_poor_and_contradictory_precedents_exist` | Pass |
 | Seed idempotent; reset restores the identical baseline | `test_seed::test_seed_twice_changes_nothing`, `test_reset_removes_user_rows_and_restores_the_baseline`; `test_governance_agent::test_reset_removes_governance_records`; `test_e2e::test_the_five_minute_demo_end_to_end_then_reset` | Pass |
 | Synthetic-data banner on every page with numbers or advice | `test_ui_guide::test_every_tab_starts_with_the_synthetic_data_banner`, `test_smoke` banner check | Pass |
@@ -85,7 +85,7 @@ $ shasum -a 256 data/demo.db                     # before and after every run ab
 | Unrelated regions rank lower; unknown topic → insufficient evidence | `test_unrelated_regions_rank_lower`, `test_unknown_topics_abstain` | Pass |
 | **Permissions** | | |
 | Filtering before retrieval and recommendation assembly | `test_authz::test_sql_filter_matches_the_rule_written_in_plain_python`, `test_view_exposes_no_write_or_raw_access`; `test_provenance::test_restricted_evidence_cannot_enter_a_recommendation` | Pass |
-| A restricted record never appears in search, graph, citations, impact or recommendation for other roles | `test_authz::test_nothing_retrievable_mentions_a_hidden_record`, `test_the_sweep_would_catch_a_leak`; `test_precedent_search::test_no_hidden_content_in_any_search_output`; `test_memory_agent::test_no_hidden_ids_labels_or_notes_in_the_graph`; `test_governance_agent::test_a_restricted_pilot_is_invisible_to_other_roles`; `test_e2e::test_restricted_work_never_reaches_other_roles` | Pass |
+| A restricted record never appears in search, graph, citations, impact or recommendation for other roles | `test_authz::test_nothing_retrievable_mentions_a_hidden_record`, `test_the_sweep_would_catch_a_leak`; `test_precedent_search::test_no_hidden_content_in_any_search_output`; `test_memory_agent::test_no_hidden_ids_labels_or_notes_in_the_graph`; `test_governance_agent::test_a_restricted_pilot_is_invisible_to_other_roles`; `test_e2e::test_restricted_work_never_reaches_other_roles`; `test_capture_agent::test_a_hidden_copy_of_the_transcript_is_treated_as_missing` | Pass |
 | **Impact (Agent 3)** | | |
 | Teams, systems, groups, risks, cost range, effort; each labelled with confidence and rationale | `test_impact_agent::test_every_item_is_labelled_and_cited_or_assumed`, `test_cost_and_effort_are_assumed_ranges_summed_over_affected_systems` | Pass |
 | Flags contract customers and competitive response in Germany | `test_flags_contract_customers_and_german_competition_from_precedents` | Pass |
@@ -121,6 +121,9 @@ Run in the in-app browser against scratch databases (`DM_DB_PATH` under a tempor
 | Stage 13 | Analyst opens the same link: "That source is not available for this role, or it does not exist." Identical text for a non-existent `SRC-999` | Pass |
 | Stage 13 | Analyst's governance tab: cannot approve or reject, with the reason shown | Pass |
 | Stage 13 | Pricing Director rejects the recommendation: `PRO-001` rejected, no pilot created | Pass |
+| Stage 15 | The whole demo in the browser against a server with a network guard in its process, fresh data: the guard recorded no outside call, every page request went to `localhost`, each click answered in about 0.2–0.4 s | Pass |
+| Stage 15 | Name and pilot markets filled in on tab 6 before step 1 keep their values through steps 1–5; approval then succeeds (`PRO-001` approved, 4 milestones) | Pass |
+| Stage 15 | Full suite with the optional `anthropic` package (2.9.0) installed: 845 passed, 0 skipped | Pass |
 
 The server log had no errors in any of these runs.
 
@@ -164,6 +167,8 @@ Run on 2026-11-17 in the in-app browser, with the app in offline mode (`LLM_MODE
 | Stage 14 second review: the new "not a database" message also caught locked, read-only and unopenable files, telling the presenter to point `DM_DB_PATH` elsewhere when it was the demo database | Fixed: those cases now say the demo database could not be opened and give SQLite's reason (`test_a_demo_database_that_cannot_be_opened_is_not_called_foreign`, three cases) |
 | Stage 14 second review: a reset (button or script) of a locked database was refused as "not created by this app" (existing check from Stage 02 treated any read error as a foreign file) | Fixed: a lock or permission error is now its own `DatabaseUnavailableError`; nothing is deleted and the message says to try again (`test_seed::test_a_locked_database_is_not_mistaken_for_a_foreign_file`, `test_the_reset_script_reports_a_locked_database_without_a_traceback`, `test_ui_reset::test_a_reset_of_a_locked_database_says_so_and_changes_nothing`). With the old code restored, all six new tests fail |
 | Stage 14 second review: the rehearsal record said every step in the script was clicked through, but the rewritten extras had not been; "offline" was ambiguous | Fixed: the extras were clicked through (row above) and the record now says what was run and that Wi-Fi was on |
+| Stage 15 release review: capturing a transcript that another role had captured for restricted eyes was refused as a duplicate, revealing that the hidden record exists | Fixed: the duplicate check looks only at copies the role can see (`test_capture_agent::test_a_hidden_copy_of_the_transcript_is_treated_as_missing`, which fails with the old check) |
+| Stage 15 release review: with a network guard loaded into the server process, Streamlit's start-up banner tried a UDP connect to `8.8.8.8` and a lookup of `checkip.amazonaws.com` (headless mode). The old server test ran outside the guard and could not see this | Fixed: `.streamlit/config.toml` sets `server.address = "localhost"`, which skips both lookups and stops the app listening on the local network. The server test now runs the server under the guard and fails if anything outside the machine is tried |
 | `.mcp.json` (tracked) names a Supabase MCP server for developer tooling | Holds no secret; the app never reads it. Out of the app's scope, noted only |
 
 ## Open items and limitations

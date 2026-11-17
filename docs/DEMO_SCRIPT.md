@@ -98,7 +98,7 @@ These are illustrations from editable synthetic assumptions, not forecasts. The 
 
 **Do**
 - **Next step ▶** opens tab **6 · Governance**.
-- Type a fictional name in **Your name**, choose two pilot markets (France and Italy), click **Approve (simulated)**.
+- Your name and the pilot markets are already filled in (the checklist does this before you start). If not, type a fictional name in **Your name** and choose two pilot markets (France and Italy). Click **Approve (simulated)**.
 - Click **Record week 1 KPI** (prefilled with the plan), then **Close the pilot and write the outcome to memory**.
 - Click **Open 2 · Institutional Memory** on the guide: the pilot decision is now the first precedent, with its outcome; Germany 2023 is still there as a warning.
 
@@ -119,6 +119,8 @@ Cut in this order; the story still holds:
 4. Step 2: say "this decision was captured earlier" and skip to step 3. The capture live check stays empty; nothing else depends on it.
 
 ## If there is time, or a question calls for it
+
+Show these after step 6. Switching the demo role clears the pilot markets filled in for step 6, and the Abstaining extra replaces the question.
 
 - **Permissions (30 seconds).** Open tab 2 and note the **Decisions** count under the graph. Switch **Demo role** to **Analyst**: one decision fewer, and tab 6 says the Analyst demo role cannot approve or reject. Switch to **Restricted Executive**: one decision more than the Pricing Director sees, a board-only decision whose source the other two roles never see in search, the graph, citations or the recommendation. Say that role switching is a demo control, not security. Switch back to **Pricing Director**.
 - **Evidence (20 seconds).** Scroll to the **Evidence explorer** at the bottom of the page and choose a source under **Open a source**. It shows the source in full, its mock reference (labelled as not a live link) and every decision and outcome that cites it, with the quoted line. Do not click a `[SRC-…]` citation while presenting: citations are links that open the source in a new browser tab, and that tab starts again at step 1. If you click one, close the new tab and carry on in the first.
@@ -146,12 +148,15 @@ Cut in this order; the story still holds:
 | A citation link opened a second browser tab | Close it and return to the first tab; nothing was lost there. |
 | A tab looks stale or half-drawn | Reload the page (⌘R). The role and everything saved stay. On-screen inputs return to their defaults: pick your step on the panel, and tick the exclusion in tab 3 again if you were past step 4. |
 | The app will not start, or the reset fails | In a terminal: `python scripts/reset_demo.py`, then `streamlit run app.py`. |
-| The laptop or projector fails | Play the backup recording (see the checklist), and talk over it with the **Say** lines above. |
+| The laptop or projector fails | Play the backup recording, or open [demo_backup/slides.html](demo_backup/slides.html) (it works offline and keeps the synthetic-data label on every frame), and talk over it with the **Say** lines above. |
 
 ## Rehearsal record
 
 | Date | How | Result |
 |------|-----|--------|
 | 2026-11-17 | The six steps clicked through in the running app on a scratch database, with the app in offline mode, as Pricing Director, starting from the reset button and ending with it. The three extras (Evidence, Permissions with the role selector, Abstaining and its way back) were clicked through separately after they were rewritten | See [QA_REPORT.md](QA_REPORT.md), "Stage 14 rehearsal" |
+| 2026-11-17 (release gate) | A complete run in the browser against a server under a network guard, on fresh data. Every click was timed, and the frames shown in [demo_backup/slides.html](demo_backup/slides.html) were captured on the way. A second run checked that step 6 can be filled in before the demo starts | See [RELEASE_SCORECARD.md](RELEASE_SCORECARD.md), "Release-gate verification" |
 
-Those runs checked that the clicks, labels, IDs and figures in this script match the app. They were driven by an automated browser, so they did not time a person speaking. "Offline mode" means the app made no outside requests (`LLM_MODE=offline`); the laptop's Wi-Fi was on. Rehearse aloud with a stopwatch at least twice before presenting, with Wi-Fi off as the checklist says, and note your own times against the table at the top.
+Those runs checked that the clicks, labels, IDs and figures in this script match the app. They were driven by an automated browser, so they did not time a person speaking.
+
+**Timing estimate.** The app answers each click in about 0.2–0.4 s, about 3 s across the 12 clicks (measured in the page from each click until Streamlit's running indicator cleared, polled every 50 ms, so the figures are approximate). The **Say** lines plus about half of the **Do** text read aloud come to about 340 words: roughly 2 to 2.5 minutes at 130–160 words a minute. That leaves about 2.5 minutes in the five for pointing, scrolling and pauses. Step 6 is the tight one, about 25–30 s of speech in a 30-second slot, which is why the checklist fills in its fields beforehand. These are estimates from word counts, not a timed rehearsal. Rehearse aloud with a stopwatch at least twice, with Wi-Fi off as the checklist says, and note your own times against the table at the top.
