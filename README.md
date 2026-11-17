@@ -4,7 +4,7 @@
 
 An offline-first Streamlit app that walks a Pricing Director through one question, *"Should we increase the freight surcharge by 5% for European customers next quarter?"*, using six logical agents: Decision Capture, Institutional Memory, Impact Analysis, Scenario Simulation, Recommendation and Governance.
 
-**Build status: Stage 13 of 15.** All six agents work end to end. Agent 1 captures a decision from a synthetic transcript. Agent 2 answers the question with ranked, cited precedents and a decision graph. Agents 3 to 5 assess impact, compare +3/+5/+7% and recommend a guarded option. Agent 6 records a simulated approval, tracks the pilot for 60 days and writes its outcome back to memory. Everything is filtered for the selected demo role, cited, and audited. A guided panel walks a presenter through the five-minute demo. An optional Anthropic mode can reword the recommendation into a checked plain-language brief; everything else stays deterministic. The QA results are in [docs/QA_REPORT.md](docs/QA_REPORT.md); the demo kit comes in a later stage. See [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md).
+**Build status: Stage 14 of 15.** All six agents work end to end. Agent 1 captures a decision from a synthetic transcript. Agent 2 answers the question with ranked, cited precedents and a decision graph. Agents 3 to 5 assess impact, compare +3/+5/+7% and recommend a guarded option. Agent 6 records a simulated approval, tracks the pilot for 60 days and writes its outcome back to memory. Everything is filtered for the selected demo role, cited, and audited. A guided panel walks a presenter through the five-minute demo. An optional Anthropic mode can reword the recommendation into a checked plain-language brief; everything else stays deterministic. To present it, follow [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md) and [docs/DEMO_CHECKLIST.md](docs/DEMO_CHECKLIST.md). The QA results are in [docs/QA_REPORT.md](docs/QA_REPORT.md). See [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md).
 
 ## Requirements
 
@@ -61,6 +61,7 @@ python scripts/reset_demo.py    # delete data/demo.db and rebuild the baseline
 - **Seed** upserts the fixture records by ID. Running it twice changes nothing, and it leaves records you created in the app alone.
 - **Reset** removes everything created in the app, including approvals, pilot trackers, generated governance records and their outcomes. It refuses to delete a file this app did not create.
 - Both accept `--db PATH` to target another file.
+- **In the app:** the sidebar **Demo reset** button does the same reset. It asks for confirmation (**Yes, reset** or **Cancel**), rebuilds the baseline for every demo role, then shows a short "reset done" page; **Start the demo from step 1** returns to the app with the guide, the question, the scenario inputs and every other field at their defaults. The demo role is kept. A reset cannot be undone and leaves no audit event, because the rebuilt database is the baseline byte for byte; the app log records it. If a reset fails, the sidebar says so and the page is kept.
 
 Baseline counts after either command:
 
@@ -235,7 +236,7 @@ python -m pytest tests/test_e2e.py      # end-to-end: the five-minute demo, role
 python -m pytest tests/test_safety.py   # no outbound code, no raw HTML, no secrets or generated data in the repo
 ```
 
-The results, the acceptance-criteria matrix and the manual checks are in [docs/QA_REPORT.md](docs/QA_REPORT.md). A full run takes about 1 to 1.5 minutes. One test (SDK error classes) is skipped when the optional `anthropic` package is not installed.
+The results, the acceptance-criteria matrix and the manual checks are in [docs/QA_REPORT.md](docs/QA_REPORT.md). A full run takes about 1.5 to 2 minutes. One test (SDK error classes) is skipped when the optional `anthropic` package is not installed.
 
 Linting is optional. Ruff is not in the requirements; install it into the virtual environment if you want it. Settings are in [ruff.toml](ruff.toml).
 
@@ -300,6 +301,7 @@ src/decision_memory/
   agents/governance_agent.py      Agent 6: approval, 60-day tracker, KPIs, outcome write-back
   ui/shell.py               banners, sidebar with role selector and guide switch, six stage tabs
   ui/guide.py               guided demo panel: steps, navigation, live checks
+  ui/reset.py               sidebar demo reset: confirmation, reset, "reset done" page
   demo_guide.py             guided demo steps, live checks and talk tracks (pure)
   ui/capture.py             Agent 1 view: transcript, card, review, confirm
   precedent_search.py       transparent precedent ranking with abstention
@@ -314,7 +316,7 @@ scripts/seed_demo.py        load the baseline
 scripts/reset_demo.py       wipe and rebuild the baseline
 data/fixtures/              synthetic fixtures (committed)
 tests/                      pytest suite (offline, no API key)
-docs/                       product spec and implementation plan
+docs/                       product spec, implementation plan, QA report, demo script and checklist
 ```
 
 ## Troubleshooting
@@ -323,13 +325,17 @@ docs/                       product spec and implementation plan
 - **`streamlit: command not found`** — run `source .venv/bin/activate` first.
 - **Port 8501 in use** — `streamlit run app.py --server.port 8502`.
 - **"Reset failed: … was not created by this app"** — `DM_DB_PATH` or `--db` points at some other file. Point it at the demo database.
+- **"… could not be read (database is locked)" or "The demo database … could not be opened (…)"** — another program, app tab or reset is using the file, or it is read-only. Wait a moment and try again; make the file writable if needed. Nothing was deleted.
+- **"… is not a database this app can open"** — `DM_DB_PATH` points at a file that is not a SQLite database. The app leaves it untouched. Point `DM_DB_PATH` at the demo database, or unset it to use `data/demo.db`.
+- **"Demo reset failed …" or "Demo reset did not finish …" in the sidebar** — run `python scripts/reset_demo.py` in a terminal; it prints the reason and rebuilds the baseline.
+- **Old text still in a field after a reset** — the "reset done" page clears the browser tab it was clicked in. Another open tab of the app keeps what was typed there; reload it.
 
 ## Not available yet
 
-- **Demo reset button**: the sidebar button is still a disabled placeholder; use `python scripts/reset_demo.py`.
-- The demo script and the in-app reset button (Stage 14).
+- **A backup recording** of the demo: record one from your own rehearsal (see the checklist).
+- The demo script was checked click by click in the running app, but not timed with a person speaking. Rehearse it aloud.
 - The Anthropic mode was tested with fake clients only; no request to the live API was made while building it. Its checks catch invented or borrowed numbers and unknown sources, not a misleading paraphrase that reuses a cited reason's own numbers: read the brief against the card.
-- The guide does not check off the Hook, and its live checks describe the app's state, not what the presenter has shown: a decision captured in an earlier run already counts for step 2. Reset the demo database before a rehearsal. Step 6 counts only a pilot for the question on screen.
+- The guide does not check off the Hook, and its live checks describe the app's state, not what the presenter has shown: a decision captured in an earlier run already counts for step 2. Reset the demo data before a rehearsal (sidebar **Demo reset**). Step 6 counts only a pilot for the question on screen.
 - Governance tracks against the plan fixed at approval. Milestone states are recalculated only when someone records a KPI or closes the pilot, so an overdue milestone shows as at risk only after the next entry. Tracker days count from the approval date, not from the proposal's effective quarter.
 - The open-pilot check compares question text, so the same proposal phrased differently can be approved twice.
 - The question text is copied into the approval record. A question typed by a role with wider access is visible to whoever can see that record. Only cited sources set the audience, not what was typed.

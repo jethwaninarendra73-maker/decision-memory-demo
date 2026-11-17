@@ -39,15 +39,12 @@ from decision_memory.ui.guide import (
 from decision_memory.ui.impact import render_impact
 from decision_memory.ui.memory_graph import render_memory_graph
 from decision_memory.ui.recommendation import render_recommendation
+from decision_memory.ui.reset import render_reset_control
 from decision_memory.ui.scenarios import render_scenarios
 from decision_memory.ui.search import render_precedent_search
 
 ROLE_KEY = "demo_role"
 ROLE_PARAM = "role"
-RESET_PLACEHOLDER_NOTE = (
-    "Placeholder: for now, run `python scripts/reset_demo.py` in a terminal. "
-    "The button is wired up in a later stage."
-)
 
 
 def render_banner() -> None:
@@ -93,13 +90,7 @@ def render_sidebar(settings: Settings, gateway: Gateway, notice: str | None) -> 
             st.markdown("**Mode:** `offline` (deterministic baseline)")
         if notice:
             st.info(f"{notice} Running offline.")
-        st.button(
-            "Demo reset",
-            key="demo_reset",
-            disabled=True,
-            help=RESET_PLACEHOLDER_NOTE,
-        )
-        st.caption(RESET_PLACEHOLDER_NOTE)
+        render_reset_control()
         st.divider()
         st.caption(
             "No live integrations, no real company or customer data, "

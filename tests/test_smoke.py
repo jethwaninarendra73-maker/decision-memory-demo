@@ -138,7 +138,8 @@ def test_app_has_six_labelled_stage_tabs(app) -> None:
     assert [tab.label for tab in app.tabs] == [agent.label for agent in AGENTS]
 
 
-def test_demo_reset_is_a_disabled_placeholder(app) -> None:
-    reset = app.button(key="demo_reset")
+def test_demo_reset_is_in_the_sidebar(app) -> None:
+    # Its behaviour is covered in test_ui_reset.py.
+    reset = app.sidebar.button(key="demo_reset")
     assert reset.label == "Demo reset"
-    assert reset.disabled
+    assert not reset.disabled

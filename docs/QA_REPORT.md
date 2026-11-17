@@ -1,6 +1,6 @@
 # QA report: Stage 13
 
-**Result: the Stage 13 gate passes.** The full suite runs offline, with no API key and on temporary databases: 806 passed and 1 skipped without the optional `anthropic` package. With it, 768 passed before the review fixes added 39 tests; that run was not repeated after them. Every acceptance criterion in `docs/PRODUCT_SPEC.md` §6 maps to automated tests below, and the gaps found during QA are fixed or listed under Open items.
+**Result: the Stage 13 and Stage 14 gates pass.** The full suite runs offline, with no API key and on temporary databases: 833 passed and 1 skipped without the optional `anthropic` package (806 at the end of Stage 13; Stage 14 added the reset and demo-kit tests). With the package, 768 passed during Stage 13; that run was not repeated after later tests were added. The five-minute demo was rehearsed in the running app (see Stage 14 rehearsal). Every acceptance criterion in `docs/PRODUCT_SPEC.md` §6 maps to automated tests below, and the gaps found during QA are fixed or listed under Open items.
 
 All figures in this report come from runs on 16 November 2026, at commit `42a265f` plus the Stage 13 changes. All data is synthetic.
 
@@ -22,10 +22,10 @@ All checks passed!
 
 $ python -m pytest -q -o addopts="" -rs        # offline, no key, anthropic absent
 SKIPPED [1] tests/test_llm_gateway.py:152: could not import 'anthropic': No module named 'anthropic'
-806 passed, 1 skipped in 65.40s
+833 passed, 1 skipped in 102.89s                  # Stage 14 after both reviews, 2026-11-17
 
 $ pip install anthropic==2.8.0 && python -m pytest -q -o addopts="" && pip uninstall -y anthropic
-768 passed in 75.60s                              # before the review fixes; not rerun
+768 passed in 75.60s                              # during Stage 13; not rerun since
 
 $ python scripts/seed_demo.py --db <scratch>/qa.db      # twice
   ... audit_events 1          (same counts both times)
@@ -124,6 +124,27 @@ Run in the in-app browser against scratch databases (`DM_DB_PATH` under a tempor
 
 The server log had no errors in any of these runs.
 
+## Stage 14 rehearsal
+
+Run on 2026-11-17 in the in-app browser, with the app in offline mode (`LLM_MODE=offline`; the laptop's Wi-Fi was on), against a scratch database, following `docs/DEMO_SCRIPT.md` step by step. It was driven by an automated browser, so it checks that every click, label, ID and figure in the script matches the app. It did not time a person speaking.
+
+| Step | What was done | What the app showed | Result |
+|------|---------------|---------------------|--------|
+| Before | Sidebar **Demo reset** → **Yes, reset** → **Start the demo from step 1** (after typing a different question) | "Reset done" page; then step 1, tab 1, the default question | Pass |
+| 1 Hook | Opened step 1 | Three cards: SRC-006, SRC-014, SRC-002 | Pass |
+| 2 Capture | **Extract decision**, **Confirm and save to memory** | "Captured in the app and confirmed: DEC-017"; transcript opened as SRC-023 | Pass |
+| 3 Ask | **Next step ▶** | Precedents DEC-009, DEC-007, DEC-004, DEC-011, DEC-001; warning DEC-001; lesson DEC-014 | Pass |
+| 4 Analyze | Ticked the exclusion; **Open 4 · Scenario Simulation** | Revenue +$8.40M / +$14.00M / +$18.80M, margin +$5.58M / +$9.50M / +$12.86M; the +$14.00M talk track | Pass |
+| 5 Recommend | **Next step ▶** | "Advisory recommendation: Phased pilot at +5%"; "2 key risk(s) cited" | Pass |
+| 6 Close the loop | Name, France and Italy, **Approve (simulated)**, **Record week 1 KPI**, **Close the pilot and write the outcome to memory**, **Open 2 · Institutional Memory** | Weekly plan +$0.215M; "Pilot PRO-001 is completed"; OUT-015 on DEC-018; DEC-018 ranked first, DEC-001 still returned | Pass |
+| Extras | Switched role by link | Decisions under the graph: 17 as Pricing Director, 16 as Analyst, 18 as Restricted Executive | Pass |
+| Extras, rewritten (second review) | On a freshly reset database: **Open a source** → SRC-006; **Demo role** selector to Analyst, Restricted Executive and back; a payroll question, then reload | One browser tab throughout; mock reference shown as text and "Cited by" with the quoted line. Decisions 15, then 14 (Analyst, no approve button, the "cannot approve or reject" note), 16 (Restricted Executive, `DEC-015` shown), 15. The payroll question abstains with no card in tab 5; a reload brings back the demo question and the card. Pasting the whole "Demo question: …" caption instead did not bring the card back, so the script now says to reload | Pass |
+| After | **Demo reset** again | `sqlite3 .dump` of the scratch database identical to a freshly seeded one; name field empty, exclusion unticked, step 1; no error in the server log; `data/demo.db` unchanged | Pass |
+
+**Found in this rehearsal and fixed:** the first version of the reset cleared the app's session only. The browser kept showing the question typed before the reset. The reset now shows a "reset done" page with none of the app's inputs on it, which makes the browser drop them; `test_ui_reset::test_after_a_reset_the_page_starts_again_from_its_defaults` checks that page, and the browser run above confirmed the fields stay at their defaults after further clicks.
+
+**Reset tests** (`tests/test_ui_reset.py`): the button asks first and Cancel changes nothing; a confirmed reset restores the baseline byte for byte after a capture, a closed pilot and a restricted pilot; the page returns to its defaults; the demo role is kept; an evidence link is dropped; the Analyst sees no count, ID or text from hidden records on any page of the reset; a failed reset keeps the page and shows a neutral reason; a foreign file swapped in between the two reset clicks is refused and left byte for byte as it was. `tests/test_demo_kit.py` keeps the script and checklist in step with the app. It checks step titles, times and lines to say, the default figures and the reset path. It also walks the whole demo in the app and checks every control the script names, every green live check it quotes and the IDs of the records the demo creates.
+
 ## Findings during QA
 
 | Finding | Action |
@@ -135,6 +156,14 @@ The server log had no errors in any of these runs.
 | Review: two end-to-end checks looked for a decision in the ranked table, which lists every visible decision | Fixed: they check the "Returned" verdict. A probe confirmed an off-topic question lists `DEC-001` as `off-topic`, so the check can fail |
 | Review: the docs implied the server subprocess ran under the network guard | Fixed: the e2e docstring and this report say the guard covers the test process only |
 | Review: the outbound scan checked imports only | Fixed: it also flags process and dynamic-import calls (`test_the_call_scan_catches_what_an_import_scan_misses`) |
+| Stage 14: one full-suite run reported 3 failures and 1 error while the in-app browser rehearsal was running on the same machine and the run took 118 s | The error came from a `-p no:logging` flag used for that run only, which removes a fixture one test needs. The failure details were not captured. The same tests passed when run alone, and four later full runs passed (818, 825, 827, then 833). Likely app-test timeouts under load; not confirmed |
+| Stage 14 review: the script's Evidence extra told the presenter to click a citation, which opens a second browser tab that starts at step 1 (confirmed in the browser: every citation link has `target="_blank"`) | Fixed in the script and checklist: use **Open a source** in the Evidence explorer; a recovery row covers an accidental click. The script also no longer says the explorer shows character offsets (it shows the source and the lines that cite it) |
+| Stage 14 review: a file at `DM_DB_PATH` that is not a SQLite database gave a raw traceback, and one reset test passed only because of that crash | Fixed: `app.py` shows a message and leaves the file untouched (`test_a_file_that_is_not_a_database_gets_a_message_not_a_traceback`); the reset test now swaps a foreign file in between the two clicks and checks it is refused and intact |
+| Stage 14 review: two new assertions could not fail (an evidence link to a source that survives a reset; a duplicate-capture message typed into the test), and the kit test checked only four button names | Fixed: the link test uses a source captured in the app, the message comes from the app's own error, and the kit test walks the whole demo. Mutation checks: with the link removal disabled the link test fails; with a button name or a live check altered in the script the kit test fails |
+| Stage 14 review: the Abstaining extra replaced the question with no stated way back; the reset was said to take "about five seconds", unmeasured | Fixed in the script: do that extra last, with the two ways back; the timing claim is removed |
+| Stage 14 second review: the new "not a database" message also caught locked, read-only and unopenable files, telling the presenter to point `DM_DB_PATH` elsewhere when it was the demo database | Fixed: those cases now say the demo database could not be opened and give SQLite's reason (`test_a_demo_database_that_cannot_be_opened_is_not_called_foreign`, three cases) |
+| Stage 14 second review: a reset (button or script) of a locked database was refused as "not created by this app" (existing check from Stage 02 treated any read error as a foreign file) | Fixed: a lock or permission error is now its own `DatabaseUnavailableError`; nothing is deleted and the message says to try again (`test_seed::test_a_locked_database_is_not_mistaken_for_a_foreign_file`, `test_the_reset_script_reports_a_locked_database_without_a_traceback`, `test_ui_reset::test_a_reset_of_a_locked_database_says_so_and_changes_nothing`). With the old code restored, all six new tests fail |
+| Stage 14 second review: the rehearsal record said every step in the script was clicked through, but the rewritten extras had not been; "offline" was ambiguous | Fixed: the extras were clicked through (row above) and the record now says what was run and that Wi-Fi was on |
 | `.mcp.json` (tracked) names a Supabase MCP server for developer tooling | Holds no secret; the app never reads it. Out of the app's scope, noted only |
 
 ## Open items and limitations
@@ -145,5 +174,9 @@ The server log had no errors in any of these runs.
 - **Record IDs are sequential,** so a gap can reveal that a hidden record exists (the seeded `DEC-015` already does).
 - **Precedent search matches words, not meaning.** Recommendation and impact see only the precedents that search returns, plus up to two failed precedents kept past the top five.
 - **Governance tracks against the plan fixed at approval.** Milestones update only on a KPI entry or close, and the open-pilot check compares question text.
-- **Not tested:** other browsers, Windows, and data volumes beyond the fixtures. A full test run takes about 1 to 1.5 minutes.
-- **The in-app reset button** arrives in Stage 14; use `python scripts/reset_demo.py`.
+- **Not tested:** other browsers, Windows, and data volumes beyond the fixtures. A full test run takes about 1.5 to 2 minutes.
+- **The demo was never run with Wi-Fi off.** The page loaded all its resources from localhost in the checks, and the suite blocks the network for in-process tests, but the presenter's Wi-Fi-off check in the checklist is untested.
+- **The demo was rehearsed by an automated browser, not timed with a person speaking.** No backup recording exists; the checklist asks the presenter to make one.
+- **A demo reset leaves no audit event,** because the rebuilt database is the baseline byte for byte. The app log records it.
+- **Any demo role can reset,** including the Analyst, as with the terminal script. Role switching is a demo control, not security.
+- **A reset clears the browser tab it was clicked in.** Another open tab of the app keeps its typed inputs until it is reloaded.

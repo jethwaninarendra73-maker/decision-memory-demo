@@ -18,6 +18,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "src"))
 
 from decision_memory.config import SettingsError, load_settings  # noqa: E402
+from decision_memory.db import DatabaseUnavailableError  # noqa: E402
 from decision_memory.seed import (  # noqa: E402
     FixtureError,
     ResetRefusedError,
@@ -34,7 +35,7 @@ def main(argv: list[str] | None = None) -> int:
         settings = load_settings()
         db_path = args.db or settings.db_path
         counts = reset_database(db_path, settings.fixtures_dir)
-    except (SettingsError, FixtureError, ResetRefusedError) as exc:
+    except (SettingsError, FixtureError, ResetRefusedError, DatabaseUnavailableError) as exc:
         print(f"Reset failed: {exc}", file=sys.stderr)
         return 1
     print(f"Reset {db_path} to the synthetic baseline")

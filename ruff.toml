@@ -13,4 +13,4 @@ extend-select = ["E402"]
 known-first-party = ["decision_memory"]
 # Tests import shared helpers from tests/conftest.py (and a few test modules) as their own
 # last import block.
-known-local-folder = ["conftest", "test_brief", "test_capture_agent", "test_governance_agent", "test_ui_governance", "test_ui_guide", "test_ui_memory_graph", "test_ui_scenarios"]
+known-local-folder = ["conftest", "test_brief", "test_capture_agent", "test_demo_guide", "test_governance_agent", "test_ui_governance", "test_ui_guide", "test_ui_memory_graph", "test_ui_scenarios"]

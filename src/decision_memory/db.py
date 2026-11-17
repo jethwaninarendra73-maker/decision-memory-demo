@@ -184,6 +184,11 @@ class SchemaError(RuntimeError):
     """The database file is not usable by this version of the app."""
 
 
+class DatabaseUnavailableError(RuntimeError):
+    """The database file could not be read right now (in use, or no permission). Unlike a
+    file this app did not create, this says nothing about whose file it is."""
+
+
 def connect(db_path: Path | str) -> sqlite3.Connection:
     """Open (creating if needed) a SQLite file with foreign keys enforced."""
     path = Path(db_path)
@@ -233,7 +238,11 @@ def open_database(db_path: Path | str) -> sqlite3.Connection:
 
 
 def is_decision_memory_db(db_path: Path | str) -> bool:
-    """True if the path is absent, empty, or a database created by this app."""
+    """True if the path is absent, empty, or a database created by this app.
+
+    Raises DatabaseUnavailableError if the file cannot be read right now (locked by
+    another connection, or no permission): that is not evidence it belongs to another app.
+    """
     path = Path(db_path)
     if not path.exists() or path.stat().st_size == 0:
         return True
@@ -245,5 +254,10 @@ def is_decision_memory_db(db_path: Path | str) -> bool:
             return conn.execute("PRAGMA application_id").fetchone()[0] == APPLICATION_ID
         finally:
             conn.close()
-    except sqlite3.DatabaseError:
+    except sqlite3.OperationalError as exc:  # locked, no permission: a subclass, so first
+        raise DatabaseUnavailableError(
+            f"{path} could not be read ({exc}), so it was not deleted. If another program "
+            "or app tab is using it, wait a moment and try again."
+        ) from exc
+    except sqlite3.DatabaseError:  # not a SQLite database at all
         return False

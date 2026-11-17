@@ -1,6 +1,6 @@
 # Implementation Plan — Decision Memory MVP
 
-Status: **Stage 13 complete (QA: suite-wide guards for no network, no key and an untouched data/demo.db; end-to-end harness for the five-minute demo with reset to baseline, role journeys, a hostile document and the real server; safety regressions; every PRODUCT_SPEC §6 criterion mapped to tests in docs/QA_REPORT.md; 767 passed + 1 skipped without the optional package, 768 with it). Next: Stage 14.**
+Status: **Stage 14 complete (demo kit: `docs/DEMO_SCRIPT.md` and `docs/DEMO_CHECKLIST.md`; the sidebar Demo reset button with confirmation, a byte-identical baseline and a "reset done" page that clears on-screen inputs; tests that keep the script in step with the app; the six steps rehearsed click by click in the running app, not timed with a person speaking; 833 passed + 1 skipped without the optional package). Next: Stage 15.**
 Each stage is one Claude Code prompt from the build-prompt pack. Implement ONE stage, get its gate green, commit, then stop.
 
 ## Stages

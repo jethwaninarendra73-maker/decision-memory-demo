@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import shutil
+import sqlite3
 import subprocess
 import sys
 from pathlib import Path
@@ -12,6 +13,7 @@ from pathlib import Path
 import pytest
 
 from decision_memory.config import REPO_ROOT
+from decision_memory.db import DatabaseUnavailableError
 from decision_memory.models import (
     AuditEvent,
     Decision,
@@ -296,3 +298,38 @@ def test_reset_script_reports_a_refusal_without_a_traceback(tmp_path: Path) -> N
     assert "Reset failed" in result.stderr
     assert "Traceback" not in result.stderr
     assert stranger.exists()
+
+
+# --- review regressions (Stage 14) -----------------------------------------------------
+
+
+def test_a_locked_database_is_not_mistaken_for_a_foreign_file(seeded_db: Path) -> None:
+    # Another connection holds a write lock. That says nothing about whose file it is,
+    # so the reset reports the lock (not "not created by this app") and deletes nothing.
+    before = dump_database(seeded_db)
+    holder = sqlite3.connect(seeded_db, timeout=0)
+    holder.execute("BEGIN EXCLUSIVE")
+    try:
+        with pytest.raises(DatabaseUnavailableError, match="could not be read") as raised:
+            reset_database(seeded_db, FIXTURES_DIR)
+        assert not isinstance(raised.value, ResetRefusedError)
+        assert "not created by this app" not in str(raised.value)
+    finally:
+        holder.rollback()
+        holder.close()
+    assert dump_database(seeded_db) == before
+
+
+def test_the_reset_script_reports_a_locked_database_without_a_traceback(
+    seeded_db: Path,
+) -> None:
+    holder = sqlite3.connect(seeded_db, timeout=0)
+    holder.execute("BEGIN EXCLUSIVE")
+    try:
+        result = run_script("reset_demo.py", seeded_db)
+    finally:
+        holder.rollback()
+        holder.close()
+    assert result.returncode == 1
+    assert "Reset failed" in result.stderr and "could not be read" in result.stderr
+    assert "Traceback" not in result.stderr
