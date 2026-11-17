@@ -15,7 +15,7 @@ from conftest import REPO_ROOT
 DOCS = REPO_ROOT / "docs"
 SPEC = (DOCS / "PRODUCT_SPEC.md").read_text(encoding="utf-8")
 CRITERIA = SPEC.split("## 6. Acceptance criteria")[1]
-RELEASE_DOCS = ("RELEASE_SCORECARD.md", "HANDOFF.md", "QA_REPORT.md")
+RELEASE_DOCS = ("RELEASE_SCORECARD.md", "HANDOFF.md", "QA_REPORT.md", "DEPLOY.md")
 LINK = re.compile(r"\]\(([^)#\s]+)(?:#[^)]*)?\)")
 TEST_NAME = re.compile(r"\btest_[a-z0-9_]+\b")
 DEFINED_TESTS = {
@@ -69,3 +69,10 @@ def test_the_handoff_names_files_that_exist() -> None:
     for path in re.findall(r"`((?:tests|data|scripts|src)/[\w./-]+|[\w]+\.py)`", handoff):
         candidates = [REPO_ROOT / path, *(REPO_ROOT / "src" / "decision_memory").rglob(path)]
         assert any(c.exists() for c in candidates), path
+
+
+def test_the_deploy_guide_keeps_the_hosted_demo_offline_and_keyless() -> None:
+    guide = (DOCS / "DEPLOY.md").read_text(encoding="utf-8")
+    secrets = re.search(r"```toml\n(.*?)```", guide, re.DOTALL).group(1)
+    assert 'DM_PER_SESSION_DB = "true"' in secrets and 'LLM_MODE = "offline"' in secrets
+    assert "ANTHROPIC_API_KEY" not in secrets

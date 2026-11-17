@@ -1,5 +1,5 @@
 # Core stack. Everything here must work offline once installed.
-streamlit>=1.40
+streamlit>=1.67  # badges, metric icons and theme options used by the UI
 pydantic>=2.7
 networkx>=3.2
 plotly>=5.20

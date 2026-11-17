@@ -29,7 +29,7 @@ Use with [DEMO_SCRIPT.md](DEMO_SCRIPT.md). Commands run from the repository root
   ```bash
   source .venv/bin/activate
   python scripts/reset_demo.py
-  streamlit run app.py
+  streamlit run app.py --server.address localhost
   ```
 - [ ] Open http://localhost:8501 in one browser window, full screen. Close other tabs of the app: a second tab keeps its own typed inputs.
 

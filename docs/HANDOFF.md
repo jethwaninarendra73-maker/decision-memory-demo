@@ -16,7 +16,7 @@ A local, offline Streamlit app that answers one question with six cooperating ag
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 python scripts/reset_demo.py        # build data/demo.db from the fixtures
-streamlit run app.py                # http://localhost:8501
+streamlit run app.py --server.address localhost   # http://localhost:8501
 python -m pytest -q                 # about 1.5 to 2 minutes, offline, no key
 ```
 
@@ -32,6 +32,7 @@ Built and tested on Python 3.15.2 on macOS only. `requirements.txt` and `ruff.to
 | [QA_REPORT.md](QA_REPORT.md) | Test guards, the criterion-to-test matrix, browser checks, every review finding and its fix |
 | [RELEASE_SCORECARD.md](RELEASE_SCORECARD.md) | The Stage 15 gate: what was verified, and what was not |
 | [DEMO_SCRIPT.md](DEMO_SCRIPT.md), [DEMO_CHECKLIST.md](DEMO_CHECKLIST.md) | Presenting the five-minute demo |
+| [DEPLOY.md](DEPLOY.md) | Putting the demo online on Streamlit Community Cloud, with a password and a fresh copy of the data per visitor |
 | [../CLAUDE.md](../CLAUDE.md) | The rules the code follows (scope, permissions, citations, no fabrication, secrets) |
 | [../data/fixtures/README.md](../data/fixtures/README.md) | The synthetic data and the rules its loader enforces |
 

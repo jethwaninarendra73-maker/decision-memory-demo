@@ -7,6 +7,7 @@ file at the repo root, then from defaults. Nothing here needs network access.
 from __future__ import annotations
 
 import os
+import tempfile
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Annotated, Literal
@@ -20,6 +21,11 @@ LlmMode = Literal["offline", "anthropic"]
 # Model for the optional Anthropic mode (Stage 12); DM_LLM_MODEL overrides it.
 DEFAULT_LLM_MODEL = "claude-opus-5-5"
 LogLevel = Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+TRUE_WORDS = {"1", "true", "yes", "on"}
+# Where per-visitor demo databases live when DM_PER_SESSION_DB is on.
+DEFAULT_SESSION_DIR = Path(tempfile.gettempdir()) / "decision-memory-sessions"
+# Settings a hosted copy may take from Streamlit's secrets as well as the environment.
+HOSTED_SETTING_NAMES = ("DM_PER_SESSION_DB", "DM_ACCESS_PASSWORD", "DM_SESSION_DIR", "LLM_MODE")
 
 
 class SettingsError(RuntimeError):
@@ -40,6 +46,12 @@ class Settings(BaseModel):
         DEFAULT_LLM_MODEL
     )
     log_level: LogLevel = "INFO"
+    # Hosted demos: each browser session gets its own fresh copy of the baseline, so
+    # visitors never see each other's captures, approvals or resets.
+    per_session_db: bool = False
+    session_dir: Path = DEFAULT_SESSION_DIR
+    # Hosted demos: a shared password asked for before anything is shown.
+    access_password: SecretStr | None = None
 
     @property
     def effective_llm_mode(self) -> LlmMode:
@@ -96,6 +108,12 @@ def load_settings(
     if (db := get("DM_DB_PATH")) is not None:
         db_path = Path(db).expanduser()
         fields["db_path"] = db_path if db_path.is_absolute() else REPO_ROOT / db_path
+    if (per_session := get("DM_PER_SESSION_DB")) is not None:
+        fields["per_session_db"] = per_session.lower() in TRUE_WORDS
+    if (session_dir := get("DM_SESSION_DIR")) is not None:
+        fields["session_dir"] = Path(session_dir).expanduser()
+    if (password := get("DM_ACCESS_PASSWORD")) is not None:
+        fields["access_password"] = password
 
     try:
         return Settings(**fields)

@@ -1,13 +1,13 @@
 [browser]
 # Offline-first: never phone home.
 gatherUsageStats = false
-
-[server]
-# Local only: serve this machine, not the network. Setting a specific address also stops
-# Streamlit's start-up banner from looking up this machine's network and public IP
-# addresses (a UDP connect to 8.8.8.8 and, in headless mode, a request to
-# checkip.amazonaws.com), so starting the app makes no outside call.
-address = "localhost"
+# Naming the address stops Streamlit's start-up banner from looking up this machine's
+# network and public IP addresses (a UDP connect to 8.8.8.8 and, in headless mode, a
+# request to checkip.amazonaws.com), so starting the app makes no outside call. Unlike
+# server.address, it does not limit where the app listens, so a cloud host can still
+# reach it. On a laptop, start with `--server.address localhost` (see README) to keep
+# the app off the local network.
+serverAddress = "localhost"
 
 [theme]
 # A calm, light presentation theme. Only Streamlit's own theme settings: no custom

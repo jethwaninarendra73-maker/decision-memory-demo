@@ -129,7 +129,9 @@ def test_unknown_role_in_the_address_falls_back_to_the_default(run_app) -> None:
 
 
 def test_empty_database_shows_how_to_load_the_data(run_app, tmp_path: Path) -> None:
-    app = run_app(db=tmp_path / "empty.db")
+    empty = tmp_path / "empty.db"
+    Repository.open(empty).close()  # tables but no data (a missing file is seeded instead)
+    app = run_app(db=empty)
     assert not app.exception
     assert any("python scripts/seed_demo.py" in info.value for info in app.info)
     assert not [f for f in app.dataframe if "Title" in f.value.columns]  # no source table

@@ -25,10 +25,10 @@ python scripts/seed_demo.py
 
 ```bash
 source .venv/bin/activate
-streamlit run app.py
+streamlit run app.py --server.address localhost
 ```
 
-The app opens at http://localhost:8501. Stop it with `Ctrl+C`.
+The app opens at http://localhost:8501. `--server.address localhost` keeps it off your local network; plain `streamlit run app.py` also works but listens on the network too. To put the demo online for prospects, see [docs/DEPLOY.md](docs/DEPLOY.md). Stop it with `Ctrl+C`.
 
 ## Look and feel
 
@@ -95,7 +95,7 @@ The first tab turns a meeting transcript into a decision that a human confirms.
 
 Demo steps (about 45 seconds):
 
-1. Run `python scripts/reset_demo.py`, then `streamlit run app.py`.
+1. Run `python scripts/reset_demo.py`, then `streamlit run app.py --server.address localhost`.
 2. Open tab **1 · Capture a decision**. **Demo transcript** is selected and the transcript is shown.
 3. Click **Extract decision**. The **Extracted decision card** appears with each field, its confidence, the character offsets of its evidence, and any flags. **Not treated as decisions** lists the eight lines that were left out and why.
 4. In **Review**, change anything you like, then click **Confirm and save to memory** (or **Reject draft**, which saves nothing).
@@ -223,7 +223,8 @@ In the seeded data, `SRC-019` (and so decision `DEC-015`) is visible to the Rest
 **Role switching is for demonstration only. It is not authentication or access control.**
 
 - Anyone who can open the app can pick any role, or put `?role=restricted_exec` in the address. There are no user accounts, passwords or sessions.
-- The app listens on `localhost` only (`server.address` in `.streamlit/config.toml`), so other machines on the network cannot open it. This also stops Streamlit's start-up banner from looking up the machine's network and public IP addresses, so starting the app makes no outside call.
+- Started with `--server.address localhost` (as above), the app listens on this machine only, so other machines on the network cannot open it. `.streamlit/config.toml` names the browser address, which stops Streamlit's start-up banner from looking up the machine's network and public IP addresses, so starting the app makes no outside call either way.
+- **Hosted copies** (see [docs/DEPLOY.md](docs/DEPLOY.md)) can give each visitor their own copy of the demo data (`DM_PER_SESSION_DB`) and ask for a shared password first (`DM_ACCESS_PASSWORD`, kept in the host's secrets). The password is a shared door key, not user accounts.
 - The filter shows what a correctly implemented permission model would hide. It does not protect the data: the SQLite file and the fixture files hold every record in plain text for anyone with access to this folder.
 - "Sources" are fictional text files. The `mock://` references are labels, not links, and nothing connects to Teams, Jira, SharePoint, email or ServiceNow.
 - Source text is treated as untrusted data: it is shown literally, never rendered as Markdown or HTML, and never interpreted as an instruction. In the graph, labels are HTML-escaped before Plotly sees them. The optional Anthropic mode sends only the recommendation's reason texts and source IDs (never source bodies), marks them as data, and accepts the model's answer only if it passes the checks described under **Optional Anthropic mode**.
@@ -338,7 +339,7 @@ docs/                       product spec, implementation plan, QA report, demo s
 
 - **"Missing Python packages: …"** — the virtual environment is not active or not installed. Run the set-up commands above.
 - **`streamlit: command not found`** — run `source .venv/bin/activate` first.
-- **Port 8501 in use** — `streamlit run app.py --server.port 8502`.
+- **Port 8501 in use** — `streamlit run app.py --server.address localhost --server.port 8502`.
 - **"Reset failed: … was not created by this app"** — `DM_DB_PATH` or `--db` points at some other file. Point it at the demo database.
 - **"… could not be read (database is locked)" or "The demo database … could not be opened (…)"** — another program, app tab or reset is using the file, or it is read-only. Wait a moment and try again; make the file writable if needed. Nothing was deleted.
 - **"… is not a database this app can open"** — `DM_DB_PATH` points at a file that is not a SQLite database. The app leaves it untouched. Point `DM_DB_PATH` at the demo database, or unset it to use `data/demo.db`.

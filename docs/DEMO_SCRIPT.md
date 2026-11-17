@@ -150,7 +150,7 @@ Show these after step 6. Switching the demo role clears the pilot markets filled
 | "This transcript has already been captured." in step 2, or live checks are green before you start | The data is not at the baseline. Sidebar **Demo reset** → **Yes, reset** → **Start the demo from step 1**. Three clicks. |
 | A citation link opened a second browser tab | Close it and return to the first tab; nothing was lost there. |
 | A tab looks stale or half-drawn | Reload the page (⌘R). The role and everything saved stay. On-screen inputs return to their defaults: pick your step on the panel, and tick the exclusion in tab 3 again if you were past step 4. |
-| The app will not start, or the reset fails | In a terminal: `python scripts/reset_demo.py`, then `streamlit run app.py`. |
+| The app will not start, or the reset fails | In a terminal: `python scripts/reset_demo.py`, then `streamlit run app.py --server.address localhost`. |
 | The laptop or projector fails | Play the backup recording, or open [demo_backup/slides.html](demo_backup/slides.html) (it works offline and keeps the synthetic-data label on every frame), and talk over it with the **Say** lines above. |
 
 ## Rehearsal record
