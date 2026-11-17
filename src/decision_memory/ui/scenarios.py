@@ -15,6 +15,7 @@ import streamlit as st
 
 from decision_memory.agents.impact_agent import HVC_EXCLUSION, SURCHARGE_OPTIONS
 from decision_memory.agents.scenario_agent import (
+    INFO,
     INPUT_LABELS,
     MARGIN_FORMULA,
     RETENTION_PROXY_NOTE,
@@ -37,6 +38,7 @@ from decision_memory.models import (
 )
 from decision_memory.precedent_search import format_setting
 from decision_memory.provenance import resolve_ref
+from decision_memory.ui.view import details, expanded_in_full_view, tab_heading
 
 BASELINE_KEY = "scenario_baseline_musd"
 EXEMPT_KEY = "scenario_exempt_pct"
@@ -253,31 +255,41 @@ def render_note(view: MemoryView, note: AssumptionNote) -> None:
 
 def render_scenarios(view: MemoryView, proposal: Proposal | None, now: datetime) -> ScenarioSet:
     """Agent 4 tab. Returns the inputs, computed results and input notes (not stored)."""
-    st.subheader("Agent 4 · Scenario Simulation")
+    tab_heading(INFO)
     st.caption(ILLUSTRATION_NOTE)
     rates = proposal.surcharge_options if proposal is not None else list(SURCHARGE_OPTIONS)
-    inputs = render_inputs(rates)
+    with details("change the assumptions (every figure below follows them)"):
+        inputs = render_inputs(rates)
     if proposal is not None:
         render_exclusion_check(proposal, inputs)
 
     scenarios = scenario_set(view, inputs, proposal.id if proposal else SCENARIO_PROPOSAL_ID, now)
     results = scenarios.results
-    st.markdown("**Formulas** (USD M per quarter; rates and shares as fractions)")
-    st.code(f"{REVENUE_FORMULA}\n{MARGIN_FORMULA}", language=None)
-
+    limit = pct(inputs.churn_guardrail)
     for column, result in zip(st.columns(len(results)), results, strict=True):
-        with column:
+        with column, st.container(border=True):
             st.markdown(f"##### +{result.surcharge_rate * 100:g}%")
+            if within_guardrail(result.assumptions, inputs.churn_guardrail):
+                st.badge(f"Within the {limit} limit", icon=":material/check:", color="green")
+            else:
+                st.badge(f"Over the {limit} limit", icon=":material/warning:", color="red")
             st.metric("Revenue change", signed_musd(result.revenue_change_musd))
             st.metric("Margin change", signed_musd(result.margin_change_musd))
-            st.text(result.formula_trace.replace("; ", ";\n"))
+            st.caption(f"{pct(result.assumptions.churn_loss_fraction)} customers lost")
+    with details("the formulas and the working for each option"):
+        st.markdown("**Formulas** (USD M per quarter; rates and shares as fractions)")
+        st.code(f"{REVENUE_FORMULA}\n{MARGIN_FORMULA}", language=None)
+        for column, result in zip(st.columns(len(results)), results, strict=True):
+            with column:
+                st.markdown(f"**+{result.surcharge_rate * 100:g}%**")
+                st.text(result.formula_trace.replace("; ", ";\n"))
 
     st.dataframe(result_rows(results, inputs.churn_guardrail), hide_index=True)
     st.caption(RETENTION_PROXY_NOTE)
     st.caption(SLA_NOTE)
     st.plotly_chart(build_chart(results), key="scenario_chart")
 
-    with st.expander("Where the inputs come from", expanded=True):
+    with st.expander("Where the inputs come from", expanded=expanded_in_full_view()):
         for note in scenarios.notes:
             render_note(view, note)
     return scenarios

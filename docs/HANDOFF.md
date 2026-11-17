@@ -49,6 +49,10 @@ The design rests on five rules. A change that breaks one of them is a bug, even 
 
 Agents are independent: each takes typed inputs and returns typed outputs (Pydantic contracts in `models.py`). Only `app.py` and `ui/` wire them together, and `ui/` holds no business logic.
 
+**The answer at a glance** at the top of the page is built by the pure `glance.py` from that run's search, scenarios and recommendation for the active role, and drawn by `ui/glance.py` (which also draws the option cards). Add nothing to it that is not computed by an agent.
+
+**What each tab shows first** is decided in `ui/view.py`. In the simple view (the default) each tab opens with a plain heading, one line on what it is for and its main result; supporting proof goes inside `details("…")`, which is a collapsed **Show details** section in the simple view and drawn in place in the full view. When you add something to a tab, ask whether a first-time viewer needs it to follow the story; if not, put it in `details`.
+
 ## Changing it safely
 
 | Change | Where | Then |

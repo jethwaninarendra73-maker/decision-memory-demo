@@ -76,6 +76,7 @@ INFO = AgentInfo(
     number=6,
     key="governance",
     name="Governance",
+    tab_name="Approve and track",
     purpose="Records human approval, tracks the pilot and feeds outcomes back into memory.",
     reads="An approved recommendation and weekly KPI entries",
     produces="60-day tracker, milestone status and an outcome linked to the decision",

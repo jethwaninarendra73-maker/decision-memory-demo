@@ -8,3 +8,32 @@ gatherUsageStats = false
 # addresses (a UDP connect to 8.8.8.8 and, in headless mode, a request to
 # checkip.amazonaws.com), so starting the app makes no outside call.
 address = "localhost"
+
+[theme]
+# A calm, light presentation theme. Only Streamlit's own theme settings: no custom
+# HTML or CSS, and nothing loaded from the network (the default fonts are bundled).
+base = "light"
+primaryColor = "#4F46E5"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F5F6FA"
+textColor = "#1F2937"
+linkColor = "#4F46E5"
+linkUnderline = false
+borderColor = "#E5E7EB"
+dataframeBorderColor = "#EEF0F4"
+dataframeHeaderBackgroundColor = "#F5F6FA"
+showWidgetBorder = true
+baseRadius = "0.6rem"
+buttonRadius = "0.6rem"
+headingFontWeights = [700, 650, 600, 600, 600, 600]
+metricValueFontSize = "1.75rem"
+metricValueFontWeight = 650
+greenColor = "#059669"
+redColor = "#DC2626"
+orangeColor = "#D97706"
+blueColor = "#4F46E5"
+chartCategoricalColors = ["#4F46E5", "#10B981", "#F59E0B", "#EF4444", "#0EA5E9", "#8B5CF6", "#64748B"]
+
+[theme.sidebar]
+backgroundColor = "#F5F6FA"
+secondaryBackgroundColor = "#FFFFFF"

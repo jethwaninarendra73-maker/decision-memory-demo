@@ -12,6 +12,7 @@ import streamlit as st
 from decision_memory.authz import MemoryView
 from decision_memory.models import SourceDocument
 from decision_memory.provenance import MOCK_LINK_NOTE, SOURCE_TYPE_LABELS
+from decision_memory.ui.view import details
 
 EVIDENCE_PARAM = "evidence"
 SELECT_KEY = "evidence_select"
@@ -63,18 +64,19 @@ def render_evidence_explorer(view: MemoryView) -> None:
         return
 
     by_id = {source.id: source for source in sources}
-    st.dataframe(
-        [
-            {
-                "Source": source.id,
-                "Type": SOURCE_TYPE_LABELS[source.source_type],
-                "Title": source.title,
-                "Date": source.document_date.isoformat(),
-            }
-            for source in sources
-        ],
-        hide_index=True,
-    )
+    with details(f"the list of all {len(sources)} sources"):
+        st.dataframe(
+            [
+                {
+                    "Source": source.id,
+                    "Type": SOURCE_TYPE_LABELS[source.source_type],
+                    "Title": source.title,
+                    "Date": source.document_date.isoformat(),
+                }
+                for source in sources
+            ],
+            hide_index=True,
+        )
 
     current = st.session_state.get(SELECT_KEY)
     if current is not None and current not in by_id:

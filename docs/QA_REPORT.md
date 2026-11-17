@@ -149,6 +149,23 @@ Run on 2026-11-17 in the in-app browser, with the app in offline mode (`LLM_MODE
 
 **Reset tests** (`tests/test_ui_reset.py`): the button asks first and Cancel changes nothing; a confirmed reset restores the baseline byte for byte after a capture, a closed pilot and a restricted pilot; the page returns to its defaults; the demo role is kept; an evidence link is dropped; the Analyst sees no count, ID or text from hidden records on any page of the reset; a failed reset keeps the page and shows a neutral reason; a foreign file swapped in between the two reset clicks is refused and left byte for byte as it was. `tests/test_demo_kit.py` keeps the script and checklist in step with the app. It checks step titles, times and lines to say, the default figures and the reset path. It also walks the whole demo in the app and checks every control the script names, every green live check it quotes and the IDs of the records the demo creates.
 
+## After the release gate: redesign for demos (2026-11-17)
+
+Requested after the simple view, to make the app more impactful for prospects. Presentation only; the agents, rules, figures, citations and permissions are unchanged.
+
+- **What changed.** A short header ("Decision Memory" and a one-line promise); an **answer at a glance** panel at the top (recommendation, revenue per quarter, customers lost against the limit, past decisions with failures flagged), computed by the pure `glance.py` from the run's own results; option cards marked Recommended / Ruled out / Not chosen from each option's own verdict; within / over the limit badges in Compare options; outcome badges on past decisions; steps ticked once passed; the presenter's notes folded; heading icons; a light indigo theme in `.streamlit/config.toml` (Streamlit's own theme settings only).
+- **Tests.** `tests/test_glance.py` (10): the panel's figures for the demo question, an off-topic question and no question; the option verdicts; the panel follows an edited input and the guardrail; outcome badges; step ticks; nothing hidden from the Analyst. Two heading checks were updated for the icons. Full suite: 875 passed (with the optional package installed, so nothing skipped).
+- **Browser.** The whole demo was run on a scratch database in the new design (capture, past decisions, exclusion, options, recommendation, approval, week 1, close, outcome) with screenshots at each step; those screenshots replace the backup frames in `docs/demo_backup/`.
+
+## After the release gate: simple view (2026-11-17)
+
+Requested after Stage 15 to make the app easier to follow. Presentation only: no agent, rule, figure or permission changed.
+
+- **What changed.** A sidebar **Simple view** switch, on by default. Tabs have plain names (Capture a decision, Past decisions, Who is affected, Compare options, Recommendation, Approve and track). In the simple view each tab opens with a plain heading and a one-line purpose; supporting proof (quoted sources, score tables, formulas, evidence offsets, rule texts, milestones, optional fields) sits under **Show details** sections. The full view draws everything in place under the agents' names, as before.
+- **Tests.** `tests/test_ui_view.py`: the switch is on by default and the tabs are named plainly; detail moves under **Show details** and back; both views show the same figures, recommendation and proof; inputs inside **Show details** still recompute; switching view keeps the open tab and the question; neither view shows the Analyst anything hidden. Four existing tests were updated for the new names and headings.
+- **Browser.** The whole demo was run in the simple view on a scratch database: capture, past decisions, exclusion, options, recommendation, approval, week 1, close, outcome (PRO-001 completed, OUT-015 in memory). Switching to the full view showed the agents' headings, no **Show details** sections and no errors.
+- **Not redone.** The backup frames in `docs/demo_backup/` predate the change and show the full view with the earlier tab names; their index says so.
+
 ## Findings during QA
 
 | Finding | Action |

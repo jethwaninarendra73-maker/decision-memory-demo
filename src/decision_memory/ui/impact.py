@@ -18,6 +18,7 @@ from decision_memory.agents.impact_agent import (
     CATEGORY_ORDER,
     DEFAULT_RULES,
     HVC_EXCLUSION,
+    INFO,
     ImpactRules,
     assess_impact,
     draft_proposal,
@@ -38,6 +39,7 @@ from decision_memory.provenance import (
     InaccessibleEvidenceError,
     resolve_ref,
 )
+from decision_memory.ui.view import details, tab_heading
 
 EXCLUDE_HVC_KEY = "impact_exclude_hvc"
 NO_SEARCH_MESSAGE = (
@@ -161,12 +163,13 @@ def render_proposal(result: SearchResult, now: datetime, view: MemoryView) -> Pr
         requested_by=view.role,
     )
     options = " / ".join(f"+{rate:.0%}" for rate in proposal.surcharge_options)
-    st.caption(
-        f"Region: {proposal.region} · effective {proposal.effective_quarter} (the quarter after "
-        f"{query.as_of.isoformat()}) · options {options}, compared in Agent 4 · "
-        f"exclusions: {', '.join(proposal.exclusions) or 'none'}"
-    )
-    st.caption(DRAFT_NOTE)
+    with details("about this draft proposal"):
+        st.caption(
+            f"Region: {proposal.region} · effective {proposal.effective_quarter} (the quarter "
+            f"after {query.as_of.isoformat()}) · options {options}, compared in Agent 4 · "
+            f"exclusions: {', '.join(proposal.exclusions) or 'none'}"
+        )
+        st.caption(DRAFT_NOTE)
     return proposal
 
 
@@ -178,7 +181,7 @@ def render_impact(
 ) -> tuple[Proposal | None, ImpactAssessment | None]:
     """Agent 3 tab. Returns the draft proposal and the assessment shown (None when there is
     no search yet, or when the assessment was withheld)."""
-    st.subheader("Agent 3 · Impact Analysis")
+    tab_heading(INFO)
     if result is None:
         st.info(NO_SEARCH_MESSAGE if view.decisions() else NOTHING_TO_ASSESS)
         return None, None
@@ -195,16 +198,17 @@ def render_impact(
         st.warning(assessment.message)
         return proposal, assessment
     st.markdown(f"{assessment.message} Precedents used: {', '.join(assessment.precedent_ids)}.")
-    st.caption(METHOD_NOTE)
     st.dataframe(item_rows(assessment), hide_index=True)
 
-    for category in CATEGORY_ORDER:
-        items = assessment.by_category(category)
-        if not items:
-            continue
-        st.markdown(f"##### {CATEGORY_LABELS[category]}")
-        for item in items:
-            render_item(view, item)
+    with details("the evidence for each item"):
+        st.caption(METHOD_NOTE)
+        for category in CATEGORY_ORDER:
+            items = assessment.by_category(category)
+            if not items:
+                continue
+            st.markdown(f"##### {CATEGORY_LABELS[category]}")
+            for item in items:
+                render_item(view, item)
 
     with st.expander("Impact rules and assumed system ranges"):
         st.caption("Edit `DEFAULT_RULES` in src/decision_memory/agents/impact_agent.py.")

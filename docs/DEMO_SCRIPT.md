@@ -8,6 +8,8 @@ This script follows the **Guided demo** panel at the top of the app. The panel s
 
 Prepare with [DEMO_CHECKLIST.md](DEMO_CHECKLIST.md). The one thing that must be true before you start: the demo data is at the baseline (sidebar **Demo reset**) and the role is **Pricing Director**.
 
+The script assumes **Simple view** is on (sidebar, the default). The guide's "what to do and say" is folded under **Presenter notes** so the audience sees a clean screen; open it on your own screen if you need the prompts. Steps get a ✓ as you pass them. Each tab then opens with a plain heading, one line on what it is for, and its main result. The proof behind it (quoted sources, scores, formulas, evidence offsets) sits under **Show details** sections: open one whenever someone asks "how do you know?". Turn **Simple view** off to show everything at once.
+
 ## At a glance
 
 | Step | Time | Where | The point to land |
@@ -22,7 +24,8 @@ Prepare with [DEMO_CHECKLIST.md](DEMO_CHECKLIST.md). The one thing that must be 
 ## 1. Hook (0:00–0:30)
 
 **Do**
-- Start on the guide panel, step 1. Three cards show a Teams-style transcript (SRC-006), a steering deck excerpt (SRC-014) and a Jira-style ticket (SRC-002).
+- Open on the **answer at a glance** at the top: the question, then **+5% pilot**, **+$14.00M** revenue per quarter, **1%** customers lost (within the 1.2% limit) and **5** past decisions with one failure flagged. Say: "This is where we will end up in five minutes. Let me show you how it gets there."
+- Then the guide panel, step 1. Three cards show a Teams-style transcript (SRC-006), a steering deck excerpt (SRC-014) and a Jira-style ticket (SRC-002).
 - Point at each card's quoted line. Do not open them; **Read in full below** is there if someone asks.
 
 **Say**
@@ -33,9 +36,9 @@ Then: "Everything you will see is synthetic, runs on this laptop with no network
 ## 2. Capture (0:30–1:15)
 
 **Do**
-- **Next step ▶** opens tab **1 · Decision Capture**. **Demo transcript** is already selected.
+- **Next step ▶** opens tab **1 · Capture a decision**. **Demo transcript** is already selected.
 - Click **Extract decision**.
-- Point at one field's evidence (the exact characters it was read from) and at **Not treated as decisions**: the "go to 7% everywhere" remark and the open Q1 question were left out.
+- Open **Show details: each field and the exact words it was read from** to point at one field's evidence, then open **Not treated as decisions**: the "go to 7% everywhere" remark and the open Q1 question were left out.
 - **Confirmed by** is prefilled. Click **Confirm and save to memory**.
 
 **Say**
@@ -46,8 +49,8 @@ Then: "Everything you will see is synthetic, runs on this laptop with no network
 ## 3. Ask (1:15–2:15)
 
 **Do**
-- **Next step ▶** opens tab **2 · Institutional Memory**. The question is already filled in.
-- Walk down the precedents: UK and Ireland and Italy at 5% (partial), France at 5% for non-contract customers (success), Germany at 3% (success).
+- **Next step ▶** opens tab **2 · Past decisions**. The question is already filled in.
+- Walk down the precedents: UK and Ireland and Italy at 5% (partial), France at 5% for non-contract customers (success), Germany at 3% (success). Open **Show details** on one of them to show how it was scored and the quoted sources.
 - Stop on the warning: Germany, 6% for all customers, 2023, **failed** (`DEC-001`).
 - Point at the lesson from another region: Singapore (`DEC-014`), shown for contrast only.
 - Scroll to the graph: the precedents are highlighted.
@@ -60,10 +63,10 @@ Then: "Everything you will see is synthetic, runs on this laptop with no network
 ## 4. Analyze (2:15–3:30)
 
 **Do**
-- **Next step ▶** opens tab **3 · Impact Analysis**. Point at one **source-supported** item (it quotes a precedent) and one **assumed for demo** item.
+- **Next step ▶** opens tab **3 · Who is affected**. In the table, point at one **Source-supported** item and one **Assumed for demo** item (the Basis column). **Show details: the evidence for each item** has the quoted lines.
 - Tick **Exclude high-volume contract customers**. The live check turns green: "High-volume contract customers are excluded in the draft proposal."
-- Click **Open 4 · Scenario Simulation** on the guide. Three columns: +3%, +5%, +7%.
-- Read the +5% formula aloud from the guide's talk track (below). If there is time, change one input and let the figures recompute, then click **Restore default inputs**.
+- Click **Open 4 · Compare options** on the guide. Three cards: +3% and +5% marked within the limit, +7% marked over it.
+- Read the +5% formula aloud from the guide's talk track (below). If there is time, open **Show details: change the assumptions**, change one input and let the figures recompute, then click **Restore default inputs**.
 
 **Say**
 > Each impact item is either quoted from a precedent or labelled as an assumption. The figures come from visible formulas, not from a model.
@@ -85,8 +88,8 @@ These are illustrations from editable synthetic assumptions, not forecasts. The 
 **Do**
 - **Next step ▶** opens tab **5 · Recommendation**.
 - Read the card's headline: **Advisory recommendation: Phased pilot at +5%**.
-- Point at **How each option was judged**: +7% is excluded because its 1.6% churn loss exceeds the 1.2% guardrail; +3% is eligible but has the lower uplift.
-- Point at the two key risks (churn among high-volume contract customers, competitive response in Germany) and at one citation under a reason.
+- Point at the option cards under **How each option was judged**: +5% **Recommended**, +7% **Ruled out** because its 1.6% churn loss exceeds the 1.2% guardrail, +3% **Not chosen** because it earns less.
+- Point at the two key risks (churn among high-volume contract customers, competitive response in Germany), then open **Show details: the sources quoted for each reason** to show one citation.
 - Point at the line that names the approval it needs.
 
 **Say**
@@ -97,10 +100,10 @@ These are illustrations from editable synthetic assumptions, not forecasts. The 
 ## 6. Close the loop (4:30–5:00)
 
 **Do**
-- **Next step ▶** opens tab **6 · Governance**.
+- **Next step ▶** opens tab **6 · Approve and track**.
 - Your name and the pilot markets are already filled in (the checklist does this before you start). If not, type a fictional name in **Your name** and choose two pilot markets (France and Italy). Click **Approve (simulated)**.
 - Click **Record week 1 KPI** (prefilled with the plan), then **Close the pilot and write the outcome to memory**.
-- Click **Open 2 · Institutional Memory** on the guide: the pilot decision is now the first precedent, with its outcome; Germany 2023 is still there as a warning.
+- Click **Open 2 · Past decisions** on the guide: the pilot decision is now the first precedent, with its outcome; Germany 2023 is still there as a warning.
 
 **Say**
 > A human approves, the pilot is tracked, and its outcome becomes institutional memory for the next decision.
@@ -124,7 +127,7 @@ Show these after step 6. Switching the demo role clears the pilot markets filled
 
 - **Permissions (30 seconds).** Open tab 2 and note the **Decisions** count under the graph. Switch **Demo role** to **Analyst**: one decision fewer, and tab 6 says the Analyst demo role cannot approve or reject. Switch to **Restricted Executive**: one decision more than the Pricing Director sees, a board-only decision whose source the other two roles never see in search, the graph, citations or the recommendation. Say that role switching is a demo control, not security. Switch back to **Pricing Director**.
 - **Evidence (20 seconds).** Scroll to the **Evidence explorer** at the bottom of the page and choose a source under **Open a source**. It shows the source in full, its mock reference (labelled as not a live link) and every decision and outcome that cites it, with the quoted line. Do not click a `[SRC-…]` citation while presenting: citations are links that open the source in a new browser tab, and that tab starts again at step 1. If you click one, close the new tab and carry on in the first.
-- **Abstaining (20 seconds). Do this one last:** it replaces the question, and there is no button to put it back. In tab 2, replace the question with something unrelated, such as a payroll question. Search answers "insufficient verifiable evidence" and tab 5 does not recommend. To return, reload the page (⌘R): the demo question comes back, the role stays, and what the demo recorded stays. Do not paste the "Demo question: …" line from under the page title: its prefix and quote marks change the search and the recommendation does not come back.
+- **Abstaining (20 seconds). Do this one last:** it replaces the question, and there is no button to put it back. In tab 2, replace the question with something unrelated, such as a payroll question. Search answers "insufficient verifiable evidence" and tab 5 does not recommend. To return, reload the page (⌘R): the demo question comes back, the role stays, and what the demo recorded stays. Type or paste only the question itself: extra words change the search.
 
 ## Likely questions
 

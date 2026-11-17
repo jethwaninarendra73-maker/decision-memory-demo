@@ -36,6 +36,7 @@ from decision_memory.precedent_search import SearchResult
 from decision_memory.provenance import SOURCE_TYPE_LABELS, escape_markdown
 from decision_memory.ui.evidence import SELECT_KEY as EVIDENCE_KEY
 from decision_memory.ui.recommendation import headline
+from decision_memory.ui.view import is_simple
 
 GUIDE_ON_KEY = "guide_on"
 STEP_KEY = "guide_step"  # the step selector widget
@@ -168,13 +169,20 @@ def render_hook(view: MemoryView) -> None:
 def render_guide(container, view: MemoryView, state: DemoState) -> None:
     """Fill the guide container for the selected step."""
     with container, st.container(border=True):
-        st.markdown("#### Guided demo · six steps, about five minutes")
+        st.markdown("#### :material/route: Guided demo · six steps, about five minutes")
         if STEP_KEY not in st.session_state:
             st.session_state[STEP_KEY] = st.session_state.get(STEP_STATE_KEY, 0)
+        # A step is ticked once the presenter has moved past it and its live checks are
+        # green (the Hook has none), so the row fills in as the demo goes.
+        current = st.session_state[STEP_KEY]
+        done = [
+            i < current and all(c.done for c in checks(s, state))
+            for i, s in enumerate(STEPS)
+        ]
         index = st.radio(
             "Step",
             list(range(len(STEPS))),
-            format_func=lambda i: f"{i + 1} · {STEPS[i].title}",
+            format_func=lambda i: f"{'✓ ' if done[i] else ''}{i + 1} · {STEPS[i].title}",
             horizontal=True,
             key=STEP_KEY,
             on_change=_open_step_tab,
@@ -190,18 +198,26 @@ def render_guide(container, view: MemoryView, state: DemoState) -> None:
             f"**Step {index + 1} of {len(STEPS)} · {escape_markdown(step.title)}** "
             f"({step.time}, {escape_markdown(where)})"
         )
-        st.markdown(
-            "\n".join(
-                f"{number}. {escape_markdown(action)}"
-                for number, action in enumerate(step.actions, start=1)
-            )
-        )
         if step.key == "hook":
             render_hook(view)
-        st.info(
-            "\n\n".join(escape_markdown(line) for line in talk_track(step, state)),
-            icon="🗣️",
+        # What to do and say: folded away in the simple view, so the audience sees a
+        # clean screen while the presenter keeps the prompts one click away.
+        notes = (
+            st.expander("Presenter notes: what to do and say", icon=":material/record_voice_over:")
+            if is_simple()
+            else st.container()
         )
+        with notes:
+            st.markdown(
+                "\n".join(
+                    f"{number}. {escape_markdown(action)}"
+                    for number, action in enumerate(step.actions, start=1)
+                )
+            )
+            st.info(
+                "\n\n".join(escape_markdown(line) for line in talk_track(step, state)),
+                icon="🗣️",
+            )
         live = checks(step, state)
         if live:
             st.markdown(

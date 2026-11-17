@@ -47,6 +47,7 @@ INFO = AgentInfo(
     number=2,
     key="memory",
     name="Institutional Memory",
+    tab_name="Past decisions",
     purpose="Connects confirmed decisions, sources and outcomes into one decision graph.",
     reads="Confirmed decisions, sources and outcomes the active role may see",
     produces="Graph of decisions, markets, segments, systems, risks, stakeholders and outcomes",

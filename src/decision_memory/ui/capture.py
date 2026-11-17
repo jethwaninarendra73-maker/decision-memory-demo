@@ -14,6 +14,7 @@ from pydantic import ValidationError
 
 from decision_memory.agents.capture_agent import (
     ALLOWED_SUFFIXES,
+    INFO,
     CaptureError,
     TranscriptError,
     confirm_capture,
@@ -34,6 +35,7 @@ from decision_memory.models import (
 )
 from decision_memory.repository import Repository
 from decision_memory.ui.evidence import SELECT_KEY as EVIDENCE_SELECT_KEY
+from decision_memory.ui.view import details, expanded_in_full_view, tab_heading
 
 DEMO_TRANSCRIPT = Path("capture") / "demo_transcript.md"
 SOURCES = ("Demo transcript", "Paste text", "Upload .txt or .md")
@@ -147,7 +149,8 @@ def _render_card(draft: DecisionDraft) -> None:
                     "Flag": f"{flag.kind.value}: {flag.reason}" if flag else "",
                 }
             )
-        st.dataframe(rows, hide_index=True)
+        with details("each field and the exact words it was read from"):
+            st.dataframe(rows, hide_index=True)
         for flag in draft.flags:
             show = st.error if flag.kind is FlagKind.MISSING else st.warning
             show(f"{FIELD_LABELS[flag.field]}: {flag.reason}")
@@ -158,7 +161,9 @@ def _render_card(draft: DecisionDraft) -> None:
 
 def _render_not_decisions(result: CaptureResult) -> None:
     count = len(result.not_decisions)
-    with st.expander(f"Not treated as decisions ({count})", expanded=count > 0):
+    with st.expander(
+        f"Not treated as decisions ({count})", expanded=expanded_in_full_view(count > 0)
+    ):
         if not count:
             st.text("Nothing else in the transcript looked like a decision.")
             return
@@ -215,26 +220,31 @@ def _render_review(repo: Repository, view: MemoryView, text: str, result: Captur
         with left:
             st.text_input("Decision date (YYYY-MM-DD)", key=_key("decision_date"))
             st.text_input(REVIEW_LABELS["owner"], key=_key("owner"))
-            st.text_input("Stakeholders (comma-separated)", key=_key("stakeholders"))
         with right:
             st.text_input(REVIEW_LABELS["region"], key=_key("region"))
             st.text_input(REVIEW_LABELS["market"], key=_key("market"))
-            st.text_input(
-                REVIEW_LABELS["customer_segment"],
-                key=_key("customer_segment"),
-                help=f"Segments already in memory: {segments}" if segments else None,
-            )
-        st.text_input("Surcharge rate in % (optional)", key=_key("surcharge_rate"))
-        st.text_area(REVIEW_LABELS["rationale"], key=_key("rationale"), height=80)
-        st.text_area("Alternatives considered (one per line)", key=_key("alternatives"), height=70)
-        st.text_area("Key risks (one per line)", key=_key("risks"), height=80)
-        st.text_area(REVIEW_LABELS["expected_outcome"], key=_key("expected_outcome"), height=70)
-        st.multiselect(
-            "Demo roles that may see this source",
-            options=[role.value for role in Role],
-            format_func=lambda value: ROLE_LABELS[Role(value)],
-            key=_key("access_roles"),
+        st.text_input(
+            REVIEW_LABELS["customer_segment"],
+            key=_key("customer_segment"),
+            help=f"Segments already in memory: {segments}" if segments else None,
         )
+        with details("more fields (already filled in from the notes)"):
+            st.text_input("Stakeholders (comma-separated)", key=_key("stakeholders"))
+            st.text_input("Surcharge rate in % (optional)", key=_key("surcharge_rate"))
+            st.text_area(REVIEW_LABELS["rationale"], key=_key("rationale"), height=80)
+            st.text_area(
+                "Alternatives considered (one per line)", key=_key("alternatives"), height=70
+            )
+            st.text_area("Key risks (one per line)", key=_key("risks"), height=80)
+            st.text_area(
+                REVIEW_LABELS["expected_outcome"], key=_key("expected_outcome"), height=70
+            )
+            st.multiselect(
+                "Demo roles that may see this source",
+                options=[role.value for role in Role],
+                format_func=lambda value: ROLE_LABELS[Role(value)],
+                key=_key("access_roles"),
+            )
         st.text_input("Confirmed by (demo label)", key=_key("actor"))
         confirm_column, reject_column = st.columns(2)
         with confirm_column:
@@ -289,7 +299,7 @@ def _render_review(repo: Repository, view: MemoryView, text: str, result: Captur
 
 def render_capture(repo: Repository, view: MemoryView, fixtures_dir: Path) -> None:
     """The whole Agent 1 tab."""
-    st.subheader("Agent 1 · Decision Capture")
+    tab_heading(INFO)
     st.caption(
         "Reads a synthetic meeting transcript as plain text and proposes a decision for a "
         "human to confirm. Nothing in the text is run, sent anywhere or followed as an "
@@ -302,7 +312,7 @@ def render_capture(repo: Repository, view: MemoryView, fixtures_dir: Path) -> No
     choice = st.radio("Transcript", SOURCES, horizontal=True, key="capture_source")
     text = _load_transcript(choice, fixtures_dir)
     if text:
-        with st.container(height=260):
+        with details("the meeting notes"), st.container(height=260):
             st.text(text)
 
     if st.button("Extract decision", key="capture_extract", type="primary", disabled=not text):

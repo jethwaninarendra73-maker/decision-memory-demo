@@ -38,6 +38,7 @@ INFO = AgentInfo(
     number=4,
     key="scenario",
     name="Scenario Simulation",
+    tab_name="Compare options",
     purpose="Compares +3%, +5% and +7% surcharges side by side using visible formulas.",
     reads="Editable synthetic assumptions",
     produces="Revenue and margin change per option, with the formula and inputs shown",

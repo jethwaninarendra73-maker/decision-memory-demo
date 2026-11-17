@@ -31,6 +31,7 @@ from decision_memory.agents.memory_agent import (
 )
 from decision_memory.authz import MemoryView
 from decision_memory.models import DERIVED_EDGE_TYPES, DecisionGraph, EdgeType, NodeKind
+from decision_memory.ui.view import details, is_simple
 
 logger = logging.getLogger(__name__)
 
@@ -325,10 +326,11 @@ def render_memory_graph(
 ) -> None:
     """The decision graph, with search precedents and other-region lessons highlighted."""
     st.markdown("#### Decision graph")
-    st.caption(
-        "A projection of the SQLite memory, rebuilt on every view and filtered for the "
-        "selected demo role before anything is drawn. Only human-confirmed decisions appear."
-    )
+    if is_simple():
+        st.caption(
+            "How past decisions, their outcomes, markets, risks and sources connect. The "
+            "decisions found above are highlighted."
+        )
     try:
         graph = build_decision_graph(view)
     except GraphIntegrityError as exc:
@@ -344,22 +346,29 @@ def render_memory_graph(
     metrics[1].metric("Outcomes", counts.get(NodeKind.OUTCOME, 0))
     metrics[2].metric("Nodes", len(graph.nodes))
     metrics[3].metric("Typed edges", len(graph.edges))
-    st.caption(
-        "Edge types: "
-        + " · ".join(f"{edge_type.value} {count}" for edge_type, count in edge_type_counts(graph).items())
-    )
-
     highlight = [node_id for node_id in highlight if graph.node(node_id) is not None]
     lessons = [node_id for node_id in lessons if graph.node(node_id) is not None]
-    shown, mode = _choose_view(graph, [*highlight, *lessons])
+    with details("graph options and counts"):
+        st.caption(
+            "A projection of the SQLite memory, rebuilt on every view and filtered for the "
+            "selected demo role before anything is drawn. Only human-confirmed decisions appear."
+        )
+        st.caption(
+            "Edge types: "
+            + " · ".join(
+                f"{edge_type.value} {count}" for edge_type, count in edge_type_counts(graph).items()
+            )
+        )
+        shown, mode = _choose_view(graph, [*highlight, *lessons])
+        if shown.nodes:
+            st.caption(f"Showing {len(shown.nodes)} nodes and {len(shown.edges)} edges.")
+        if highlight:
+            st.caption("Highlighted search precedents: " + ", ".join(highlight))
+        if lessons:
+            st.caption("Highlighted lessons from other regions: " + ", ".join(lessons))
     if not shown.nodes:
         st.info("Nothing to show: choose at least one node kind.")
         return
-    st.caption(f"Showing {len(shown.nodes)} nodes and {len(shown.edges)} edges.")
-    if highlight:
-        st.caption("Highlighted search precedents: " + ", ".join(highlight))
-    if lessons:
-        st.caption("Highlighted lessons from other regions: " + ", ".join(lessons))
     if mode == MODES[0]:
         render_network(shown, highlight, lessons)
     else:

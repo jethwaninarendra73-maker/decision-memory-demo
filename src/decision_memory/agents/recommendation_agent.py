@@ -66,6 +66,7 @@ INFO = AgentInfo(
     number=5,
     key="recommendation",
     name="Recommendation",
+    tab_name="Recommendation",
     purpose="Combines precedents, impact and scenarios into cited, advisory guidance.",
     reads="Accessible precedents, the impact assessment, scenario results and guardrails",
     produces="Recommended option, cited reasons, excluded options, risks and an action plan",

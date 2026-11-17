@@ -17,6 +17,7 @@ from pydantic import ValidationError
 from decision_memory.agents.governance_agent import (
     DEFAULT_RULES,
     GOVERNANCE_NOTE,
+    INFO,
     NOTHING_TO_APPROVE,
     GovernanceError,
     GovernanceRules,
@@ -51,6 +52,7 @@ from decision_memory.models import (
 from decision_memory.provenance import escape_markdown, resolve_ref
 from decision_memory.repository import Repository
 from decision_memory.ui.recommendation import headline
+from decision_memory.ui.view import details, is_simple, tab_heading
 
 ACTOR_KEY = "gov_actor"
 MARKETS_KEY = "gov_markets"
@@ -154,23 +156,25 @@ def render_approval(
             key=MARKETS_KEY,
             max_selections=rules.pilot_markets,
         )
-        share = (
-            st.number_input(
-                "Pilot markets' share of baseline revenue (%)",
-                min_value=1.0,
-                max_value=100.0,
-                value=rules.default_pilot_share * 100,
-                step=1.0,
-                format="%.0f",
-                key=SHARE_KEY,
+    with details("optional: pilot share and an approver note"):
+        if pilot:
+            share = (
+                st.number_input(
+                    "Pilot markets' share of baseline revenue (%)",
+                    min_value=1.0,
+                    max_value=100.0,
+                    value=rules.default_pilot_share * 100,
+                    step=1.0,
+                    format="%.0f",
+                    key=SHARE_KEY,
+                )
+                / 100
             )
-            / 100
-        )
-        st.caption(
-            "The pilot share is assumed for demo: it scales the scenario figure (whole "
-            "baseline) to the pilot markets for the weekly plan."
-        )
-    note = st.text_area("Approver note (optional)", key=NOTE_KEY, max_chars=500)
+            st.caption(
+                "The pilot share is assumed for demo: it scales the scenario figure (whole "
+                "baseline) to the pilot markets for the weekly plan."
+            )
+        note = st.text_area("Approver note (optional)", key=NOTE_KEY, max_chars=500)
 
     blocked = condition_unmet(result)
     if blocked:
@@ -426,14 +430,15 @@ def render_close(
     st.markdown(
         f"Rule suggests **{suggestion.verdict.value}**: {escape_markdown(suggestion.reason)}"
     )
-    st.caption(
-        f"Over {suggestion.weeks_recorded} recorded weeks, quarter-equivalent (weekly average × "
-        f"{rules.weeks_per_quarter}): revenue change {musd(suggestion.actual_revenue_musd)} "
-        f"against {musd(suggestion.planned_revenue_musd)} planned; average churn loss "
-        f"{pct(suggestion.actual_churn_loss_fraction)} against "
-        f"{pct(suggestion.planned_churn_loss_fraction)} planned (guardrail {pct(guardrail)})."
-    )
-    st.caption("Rule (a demo setting): " + " ".join(verdict_rules(rules)))
+    with details("how the suggestion was worked out"):
+        st.caption(
+            f"Over {suggestion.weeks_recorded} recorded weeks, quarter-equivalent (weekly average "
+            f"× {rules.weeks_per_quarter}): revenue change {musd(suggestion.actual_revenue_musd)} "
+            f"against {musd(suggestion.planned_revenue_musd)} planned; average churn loss "
+            f"{pct(suggestion.actual_churn_loss_fraction)} against "
+            f"{pct(suggestion.planned_churn_loss_fraction)} planned (guardrail {pct(guardrail)})."
+        )
+        st.caption("Rule (a demo setting): " + " ".join(verdict_rules(rules)))
     if suggestion.weeks_recorded < len(record.kpis):
         st.caption(
             f"Closing now ends the pilot after {suggestion.weeks_recorded} of "
@@ -504,10 +509,17 @@ def render_pilot(
         if proposal.status is ProposalStatus.REJECTED:
             st.caption("Rejected: no pilot, decision or tracker was created.")
     else:
-        st.markdown(
-            f"Decision in memory: **{decision.id}** · {escape_markdown(decision.title)}\n"
-            + _citations(view, decision.source_refs)
-        )
+        if is_simple():
+            st.markdown(
+                f"Decision in memory: **{decision.id}** · {escape_markdown(decision.title)}"
+            )
+            with details("the sources this decision cites"):
+                st.markdown(_citations(view, decision.source_refs))
+        else:
+            st.markdown(
+                f"Decision in memory: **{decision.id}** · {escape_markdown(decision.title)}\n"
+                + _citations(view, decision.source_refs)
+            )
         if record.kpis:
             slot = record.kpis[0]
             st.caption(
@@ -516,8 +528,9 @@ def render_pilot(
                 f"{pct(slot.planned_churn_loss_fraction)} of baseline "
                 f"(pause and review above the {pct(proposal.churn_guardrail or 0.0)} guardrail)."
             )
-        st.markdown("**Milestones** (60-day tracker)")
-        st.dataframe(milestone_rows(record), hide_index=True)
+        with details("the 60-day milestones"):
+            st.markdown("**Milestones** (60-day tracker)")
+            st.dataframe(milestone_rows(record), hide_index=True)
         st.markdown("**Weekly KPI checks**")
         st.dataframe(kpi_rows(record), hide_index=True)
         if proposal.status in (ProposalStatus.APPROVED, ProposalStatus.IN_PROGRESS):
@@ -578,7 +591,7 @@ def render_governance(
     rules: GovernanceRules = DEFAULT_RULES,
 ) -> None:
     """Agent 6 tab."""
-    st.subheader("Agent 6 · Governance")
+    tab_heading(INFO)
     st.caption(GOVERNANCE_NOTE)
     notice = st.session_state.pop(NOTICE_KEY, None)
     if notice:

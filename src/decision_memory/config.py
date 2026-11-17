@@ -31,7 +31,7 @@ class Settings(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    app_name: str = "Enterprise Decision Intelligence & Institutional Memory Agent"
+    app_name: str = "Decision Memory"
     db_path: Path = REPO_ROOT / "data" / "demo.db"
     fixtures_dir: Path = REPO_ROOT / "data" / "fixtures"
     llm_mode: LlmMode = "offline"

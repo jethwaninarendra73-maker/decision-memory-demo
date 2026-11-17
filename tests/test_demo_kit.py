@@ -64,15 +64,16 @@ SCRIPT_CONTROLS = (
     "Extract decision",
     "Confirm and save to memory",
     "Exclude high-volume contract customers",
-    "Open 4 · Scenario Simulation",
+    f"Open {AGENTS[3].label}",
     "Restore default inputs",
     "Approve (simulated)",
     "Record week 1 KPI",
     "Close the pilot and write the outcome to memory",
-    "Open 2 · Institutional Memory",
+    f"Open {AGENTS[1].label}",
     "Open a source",
     "Demo role",
     "Guided demo",
+    "Simple view",
     "Demo reset",
 )
 SCRIPT_FIELDS = ("Confirmed by", "Your name")  # the script shortens these two labels

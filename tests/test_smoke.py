@@ -108,12 +108,19 @@ def test_agent_module_imports_and_exposes_info(module_name: str) -> None:
 
 
 def test_every_agent_is_built_and_shown_in_its_tab(run_app) -> None:
-    # No stage placeholder is left: each tab shows its agent's own heading.
+    # No stage placeholder is left: each tab shows its agent's own heading. The simple
+    # view (the default) uses the plain tab name and names the agent underneath.
     app = run_app()
     headings = [s.value for s in app.subheader]
+    captions = [c.value for c in app.caption]
     for agent in AGENTS:
-        assert any(h.startswith(f"Agent {agent.number}") for h in headings), agent.key
+        assert any(h.endswith(agent.tab_name) for h in headings), agent.key  # after an icon
+        assert f"Agent {agent.number} · {agent.name}" in captions, agent.key
     assert "Not built yet" not in "\n".join(m.value for m in app.info)
+    app.toggle(key="simple_view").set_value(False)
+    headings = [s.value for s in app.run().subheader]
+    for agent in AGENTS:  # the full view: the agent's own name, as before
+        assert f"Agent {agent.number} · {agent.name}" in headings, agent.key
 
 
 # --- Streamlit shell --------------------------------------------------------

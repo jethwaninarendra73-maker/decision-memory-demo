@@ -25,8 +25,16 @@ from decision_memory.precedent_search import (
     search_precedents,
 )
 from decision_memory.provenance import INSUFFICIENT_EVIDENCE_TEXT, Claim, escape_markdown
+from decision_memory.ui.view import details, is_simple
 
 QUESTION_KEY = "search_question"
+# What happened after a past decision, at a glance.
+OUTCOME_BADGES: dict[str | None, tuple[str, str, str]] = {
+    "success": ("Worked", "green", ":material/check_circle:"),
+    "partial": ("Mixed result", "orange", ":material/contrast:"),
+    "failed": ("Failed", "red", ":material/cancel:"),
+    None: ("No outcome yet", "gray", ":material/schedule:"),
+}
 REGION_KEY = "search_region"
 SEGMENT_KEY = "search_segment"
 RATE_KEY = "search_rate_pct"
@@ -108,10 +116,13 @@ def ranked_rows(result: SearchResult) -> list[dict[str, str]]:
 
 def _render_claim(label: str, claim: Claim) -> None:
     st.markdown(f"**{label}**")
+    st.text(claim.render() if claim.supported else INSUFFICIENT_EVIDENCE_TEXT)
+
+
+def _render_claim_sources(label: str, claim: Claim) -> None:
     if not claim.supported:
-        st.text(INSUFFICIENT_EVIDENCE_TEXT)
         return
-    st.text(claim.render())
+    st.markdown(f"**{label}**, quoted from:")
     for item in claim.evidence:
         st.markdown(f"- {item.format_markdown()}")
 
@@ -128,12 +139,19 @@ def render_precedent(label: str, precedent: Precedent) -> None:
             f"{precedent.customer_segment}{rate} · outcome: "
             f"{precedent.outcome_verdict.value if precedent.outcome_verdict else 'not observed yet'}"
         )
+        verdict = precedent.outcome_verdict.value if precedent.outcome_verdict else None
+        label, color, icon = OUTCOME_BADGES.get(verdict, OUTCOME_BADGES[None])
+        st.badge(label, icon=icon, color=color)  # type: ignore[arg-type]
         if precedent.warning:
             st.warning(precedent.warning, icon="⚠️")
-        st.dataframe(component_rows(precedent), hide_index=True)
         _render_claim("What was decided", precedent.decision_claim)
         if precedent.outcome_claim is not None:
             _render_claim("What happened", precedent.outcome_claim)
+        with details("how it was scored, and the quoted sources"):
+            st.dataframe(component_rows(precedent), hide_index=True)
+            _render_claim_sources("What was decided", precedent.decision_claim)
+            if precedent.outcome_claim is not None:
+                _render_claim_sources("What happened", precedent.outcome_claim)
 
 
 def _sync_filters(question: str, today: date) -> SearchQuery:
@@ -151,7 +169,7 @@ def _sync_filters(question: str, today: date) -> SearchQuery:
 
 def render_precedent_search(view: MemoryView, today: date) -> SearchResult | None:
     """Question box, editable filters and ranked precedents. Returns the result."""
-    st.markdown("#### Ask institutional memory")
+    st.markdown("#### Ask a question" if is_simple() else "#### Ask institutional memory")
     question = st.text_input("Question", value=DEMO_QUESTION, key=QUESTION_KEY).strip()
     if not question:
         st.info("Type a question to search the decisions this role can see.")
@@ -206,15 +224,19 @@ def render_precedent_search(view: MemoryView, today: date) -> SearchResult | Non
         f"segment {query.customer_segment}" if query.customer_segment else "any segment",
         f"rate {query.surcharge_rate:.1%}" if query.surcharge_rate is not None else "any rate",
     ]
-    st.caption(
-        "Query terms: " + (", ".join(result.query_terms) or "none") + " · " + " · ".join(filters)
-    )
-    if result.equivalences:
+    with details("how the question was read"):
         st.caption(
-            "Equivalences applied: "
-            + "; ".join(f"{written} → {became}" for written, became in result.equivalences)
-            + ". Search matches words; these mappings are listed in precedent_search.py."
+            "Query terms: "
+            + (", ".join(result.query_terms) or "none")
+            + " · "
+            + " · ".join(filters)
         )
+        if result.equivalences:
+            st.caption(
+                "Equivalences applied: "
+                + "; ".join(f"{written} → {became}" for written, became in result.equivalences)
+                + ". Search matches words; these mappings are listed in precedent_search.py."
+            )
 
     if result.abstained:
         st.warning(result.message)

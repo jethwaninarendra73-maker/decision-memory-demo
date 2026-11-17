@@ -8,6 +8,7 @@ import streamlit as st
 
 from decision_memory import DEMO_QUESTION, SYNTHETIC_BANNER
 from decision_memory.agents import AGENTS
+from decision_memory.agents.governance_agent import DEFAULT_RULES as GOVERNANCE_RULES
 from decision_memory.authz import (
     DEFAULT_ROLE,
     DEMO_ROLE_NOTICE,
@@ -16,6 +17,7 @@ from decision_memory.authz import (
     parse_role,
 )
 from decision_memory.config import Settings
+from decision_memory.glance import build_glance
 from decision_memory.llm_gateway import Gateway, make_gateway
 from decision_memory.models import (
     ImpactAssessment,
@@ -28,6 +30,7 @@ from decision_memory.precedent_search import SearchResult
 from decision_memory.repository import Repository
 from decision_memory.ui.capture import render_capture
 from decision_memory.ui.evidence import render_evidence_explorer
+from decision_memory.ui.glance import render_glance
 from decision_memory.ui.governance import render_governance
 from decision_memory.ui.guide import (
     GUIDE_HELP,
@@ -41,9 +44,14 @@ from decision_memory.ui.memory_graph import render_memory_graph
 from decision_memory.ui.recommendation import render_recommendation
 from decision_memory.ui.reset import render_reset_control
 from decision_memory.ui.scenarios import render_scenarios
-from decision_memory.ui.search import render_precedent_search
+from decision_memory.ui.search import QUESTION_KEY, render_precedent_search
+from decision_memory.ui.view import render_view_switch, tab_heading
 
 ROLE_KEY = "demo_role"
+TAGLINE = (
+    "Answers pricing questions from what your company has already learned, with the proof "
+    "for every claim. It advises; people decide."
+)
 ROLE_PARAM = "role"
 
 
@@ -80,6 +88,7 @@ def render_sidebar(settings: Settings, gateway: Gateway, notice: str | None) -> 
     with st.sidebar:
         st.header("Demo controls")
         role = select_role()
+        render_view_switch()
         st.toggle("Guided demo", value=True, key=GUIDE_ON_KEY, help=GUIDE_HELP)
         if gateway.mode == "anthropic":
             st.markdown(
@@ -101,7 +110,7 @@ def render_sidebar(settings: Settings, gateway: Gateway, notice: str | None) -> 
 
 def render_memory_tab(view: MemoryView) -> SearchResult | None:
     """Agent 2: ask a question, then see the cited precedents highlighted in the graph."""
-    st.subheader("Agent 2 · Institutional Memory")
+    tab_heading(next(agent for agent in AGENTS if agent.key == "memory"))
     result = render_precedent_search(view, date.today())
     st.divider()
     render_memory_graph(
@@ -115,13 +124,15 @@ def render_memory_tab(view: MemoryView) -> SearchResult | None:
 def render_app(settings: Settings, repo: Repository) -> None:
     """Render the whole shell. Called once per Streamlit rerun."""
     render_banner()
-    st.title(settings.app_name)
-    st.caption(f"Demo question: “{DEMO_QUESTION}”")
+    st.title(f":material/neurology: {settings.app_name}")
+    st.caption(TAGLINE)
     gateway, notice = make_gateway(settings)
     role = render_sidebar(settings, gateway, notice)
     view = MemoryView(repo, role)
 
-    guide = st.container()  # drawn above the tabs, filled after them
+    # Drawn above the tabs, filled after them with what the tabs computed on this run.
+    glance = st.container()
+    guide = st.container()
     # The tabs track which one is open, so the guide can open the tab for each step.
     tabs = st.tabs([agent.label for agent in AGENTS], key=TAB_KEY, on_change="rerun")
     search: SearchResult | None = None  # tabs render in order, so search runs first
@@ -148,6 +159,22 @@ def render_app(settings: Settings, repo: Repository) -> None:
             elif agent.key == "governance":
                 render_governance(repo, view, proposal, scenarios, recommendation, now)
 
+    approver = (
+        ROLE_LABELS[recommendation.recommendation.approval_required_by]
+        if recommendation is not None
+        else None
+    )
+    render_glance(
+        glance,
+        build_glance(
+            st.session_state.get(QUESTION_KEY, DEMO_QUESTION).strip(),
+            search,
+            scenarios,
+            recommendation,
+            GOVERNANCE_RULES.pilot_markets,
+            approver,
+        ),
+    )
     if st.session_state.get(GUIDE_ON_KEY, True):
         state = build_state(view, search, proposal, scenarios, recommendation, impact)
         render_guide(guide, view, state)

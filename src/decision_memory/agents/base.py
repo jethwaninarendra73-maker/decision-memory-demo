@@ -16,10 +16,11 @@ class AgentInfo:
     reads: str
     produces: str
     build_stage: int
+    tab_name: str = ""  # plain words for the tab; the agent's name if empty
 
     @property
     def label(self) -> str:
-        return f"{self.number} · {self.name}"
+        return f"{self.number} · {self.tab_name or self.name}"
 
 
 def not_implemented(info: AgentInfo) -> NotImplementedError:

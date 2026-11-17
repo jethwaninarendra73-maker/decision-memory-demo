@@ -35,10 +35,10 @@ Use with [DEMO_SCRIPT.md](DEMO_SCRIPT.md). Commands run from the repository root
 
 ## Right before you speak
 
-- [ ] Sidebar **Demo role** is **Pricing Director**.
+- [ ] Sidebar **Demo role** is **Pricing Director**, and **Simple view** is on.
 - [ ] Sidebar **Guided demo** is on, and the panel shows **Step 1 of 6 · Hook**.
 - [ ] The data is at the baseline. If in doubt: **Demo reset** → **Yes, reset** → **Start the demo from step 1**.
-- [ ] Fill in step 6 now, so it is three clicks on stage: open tab **6 · Governance**, type a fictional name in **Your name**, choose **France** and **Italy** as pilot markets, then click the tab **1 · Decision Capture** to leave tab 6. (Clicking **1 · Hook** on the guide does not leave tab 6, because the guide is already at step 1.) Both fields keep their values through steps 1–5 (checked in the app). A reset clears both. Switching the **Demo role** clears the pilot markets, because only approver roles see that field: show the role extras after step 6, or choose the markets again.
+- [ ] Fill in step 6 now, so it is three clicks on stage: open tab **6 · Approve and track**, type a fictional name in **Your name**, choose **France** and **Italy** as pilot markets, then click the tab **1 · Capture a decision** to leave tab 6. (Clicking **1 · Hook** on the guide does not leave tab 6, because the guide is already at step 1.) Both fields keep their values through steps 1–5 (checked in the app). A reset clears both. Switching the **Demo role** clears the pilot markets, because only approver roles see that field: show the role extras after step 6, or choose the markets again.
 - [ ] Step 2's live check reads "No decision captured in the app yet." (click step 2 to look, then go back to step 1).
 - [ ] The yellow **SYNTHETIC DATA** label is visible at the top.
 - [ ] The backup recording, or [demo_backup/slides.html](demo_backup/slides.html), is one click away.

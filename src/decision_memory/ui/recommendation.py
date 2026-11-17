@@ -16,12 +16,14 @@ import streamlit as st
 from decision_memory.agents.recommendation_agent import (
     ADVISORY_NOTE,
     DEFAULT_RULES,
+    INFO,
     RecommendationRules,
     recommend,
     rules_summary,
 )
 from decision_memory.authz import ROLE_LABELS, MemoryView
 from decision_memory.brief import Brief, brief_key, briefable, offline_brief, write_brief
+from decision_memory.glance import option_card
 from decision_memory.llm_gateway import Gateway, OfflineGateway
 from decision_memory.models import (
     ImpactAssessment,
@@ -39,6 +41,8 @@ from decision_memory.provenance import (
     escape_markdown,
     resolve_ref,
 )
+from decision_memory.ui.glance import render_option_cards
+from decision_memory.ui.view import details, is_simple, tab_heading
 
 NO_QUESTION_MESSAGE = (
     "Ask a question in tab 2 · Institutional Memory first. The recommendation is built from "
@@ -137,17 +141,26 @@ def render_card(view: MemoryView, result: RecommendationResult) -> None:
                 st.caption(text)
             else:
                 st.warning(text, icon="⚠️")
-        if rec.reasons:
+        if rec.reasons and is_simple():
+            # The reasons in plain words; their quoted sources sit under "Show details".
+            st.markdown(
+                "**Why**\n\n" + "\n".join(f"- {escape_markdown(r.text)}" for r in rec.reasons)
+            )
+            with details("the sources quoted for each reason"):
+                st.caption("Every reason cites a source this role can see.")
+                render_reasons(view, rec)
+        elif rec.reasons:
             st.markdown("**Why** (every reason cites a source this role can see)")
             render_reasons(view, rec)
         if rec.action_plan:
-            st.markdown("**Action plan for the approver** (nothing here is executed)")
-            st.markdown(
-                "\n".join(
-                    f"{number}. {escape_markdown(step)}"
-                    for number, step in enumerate(rec.action_plan, start=1)
+            with details("the action plan for the approver"):
+                st.markdown("**Action plan for the approver** (nothing here is executed)")
+                st.markdown(
+                    "\n".join(
+                        f"{number}. {escape_markdown(step)}"
+                        for number, step in enumerate(rec.action_plan, start=1)
+                    )
                 )
-            )
 
 
 def render_brief_sentences(view: MemoryView, rec: Recommendation, brief: Brief) -> None:
@@ -205,7 +218,7 @@ def render_recommendation(
     gateway: Gateway | None = None,
 ) -> RecommendationResult | None:
     """Agent 5 tab. Returns the result shown, or None when there is nothing to show."""
-    st.subheader("Agent 5 · Recommendation")
+    tab_heading(INFO)
     if search is None or proposal is None or scenarios is None:
         st.info(NO_QUESTION_MESSAGE)
         return None
@@ -227,9 +240,12 @@ def render_recommendation(
 
     if result.options:
         st.markdown("**How each option was judged**")
-        st.dataframe(option_rows(result.options), hide_index=True)
-        st.caption(rules_summary(rules))
-        st.caption(f"Precedents used: {', '.join(result.precedent_ids)}.")
+        render_option_cards([option_card(o) for o in result.options])
+        with details("every option's checks, in a table"):
+            st.dataframe(option_rows(result.options), hide_index=True)
+        with details("the rules used"):
+            st.caption(rules_summary(rules))
+            st.caption(f"Precedents used: {', '.join(result.precedent_ids)}.")
     if rec.assumptions:
         with st.expander("Assumptions behind the figures (not reasons)"):
             st.markdown("\n".join(f"- {escape_markdown(line)}" for line in rec.assumptions))

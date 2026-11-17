@@ -52,7 +52,8 @@ def test_the_tab_explains_itself_and_starts_with_no_records(run_app) -> None:
     app = run_app()
     assert not app.exception
     text = rendered_text(app)
-    assert "Agent 6 · Governance" in [s.value for s in app.subheader]
+    assert any(s.value.endswith("Approve and track") for s in app.subheader)  # simple view
+    assert "Agent 6 · Governance" in [c.value for c in app.caption]
     assert GOVERNANCE_NOTE in text and NO_RECORDS in text
 
 

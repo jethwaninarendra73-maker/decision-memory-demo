@@ -30,6 +30,18 @@ streamlit run app.py
 
 The app opens at http://localhost:8501. Stop it with `Ctrl+C`.
 
+## Look and feel
+
+The page opens with the **answer at a glance**: the question, then four tiles: the recommendation (for example **+5% pilot**), revenue per quarter for the recommended option, customers lost against the churn limit, and how many past decisions it rests on, with any failure flagged. The tiles are filled from what the tabs computed for the selected role on this run (`src/decision_memory/glance.py`), so they follow every input and question; nothing on them is typed in.
+
+Elsewhere: options appear as cards marked **Recommended**, **Ruled out** or **Not chosen** in the recommendation's own words, and as **within / over the limit** in Compare options; past decisions carry an outcome badge (**Worked**, **Mixed result**, **Failed**); the guide ticks each step once you have passed it; and a calm indigo theme is set in `.streamlit/config.toml` with Streamlit's own theme settings (no custom HTML or CSS, nothing loaded from the network).
+
+## Simple view
+
+The sidebar **Simple view** switch is on by default. Each tab then opens with a plain heading ("Capture a decision", "Past decisions", "Who is affected", "Compare options", "Recommendation", "Approve and track"), one line on what it is for, and its main result. The proof behind each result sits under **Show details** sections: quoted sources, score tables, formulas and the working, evidence offsets, rule texts, milestones. Nothing is removed, and the input boxes inside those sections still work. Turn the switch off for the full view, which draws everything in place under the agents' own names ("Agent 1 · Decision Capture" and so on).
+
+Only presentation changes between the two views: the agents, figures, citations and permissions are the same (`tests/test_ui_view.py`). The switch and the per-tab one-liners are in `src/decision_memory/ui/view.py`.
+
 ## Guided demo (five minutes, six steps)
 
 A **Guided demo** panel sits above the stage tabs. It is on by default; turn it off with the **Guided demo** switch in the sidebar to use the tabs freely.
@@ -84,7 +96,7 @@ The first tab turns a meeting transcript into a decision that a human confirms.
 Demo steps (about 45 seconds):
 
 1. Run `python scripts/reset_demo.py`, then `streamlit run app.py`.
-2. Open tab **1 · Decision Capture**. **Demo transcript** is selected and the transcript is shown.
+2. Open tab **1 · Capture a decision**. **Demo transcript** is selected and the transcript is shown.
 3. Click **Extract decision**. The **Extracted decision card** appears with each field, its confidence, the character offsets of its evidence, and any flags. **Not treated as decisions** lists the eight lines that were left out and why.
 4. In **Review**, change anything you like, then click **Confirm and save to memory** (or **Reject draft**, which saves nothing).
 5. A green banner confirms `DEC-017`, and its transcript opens as `SRC-023` in the Evidence explorer.
@@ -103,7 +115,7 @@ Pasted and uploaded text is only ever read as characters. It is not run, rendere
 
 ## Precedent search (Agent 2)
 
-Tab **2 · Institutional Memory** opens with **Ask institutional memory**. The demo question is filled in; type any other question to search the decisions the selected role can see.
+Tab **2 · Past decisions** opens with **Ask a question** (**Ask institutional memory** in the full view). The demo question is filled in; type any other question to search the decisions the selected role can see.
 
 - The region and surcharge rate are read from the question only when it states exactly one of each (for example "European" and "5%"). They appear under **Filters read from the question**, where they can be changed, along with an optional customer segment and the date recency is measured from.
 - Search matches words, helped by a short, visible list of equivalences (for example "price uplift" → "surcharge increase", "client" → "customer", "trial" → "pilot", "EU" → "Europe"). The equivalences a question triggered are listed under it; the full list is `PHRASES` and `SYNONYMS` in `src/decision_memory/precedent_search.py`.
@@ -128,7 +140,7 @@ Below the search, the tab draws memory as a network of decisions, outcomes, mark
 
 ## Impact analysis (Agent 3)
 
-Tab **3 · Impact Analysis** takes the question and the precedents from tab 2 and lists what the proposal would touch: affected teams, systems, customer groups and risks, plus an illustrative cost and effort range.
+Tab **3 · Who is affected** takes the question and the precedents from tab 2 and lists what the proposal would touch: affected teams, systems, customer groups and risks, plus an illustrative cost and effort range.
 
 - The **draft proposal** is built from the question: its region, the quarter after the search date (2027-Q1 for 13 Nov 2026), and options +3 / +5 / +7 % for Agent 4 to compare. The one choice is whether to exclude high-volume contract customers. The draft is not saved, and nothing is sent, priced or changed.
 - Every item comes from a rule in `DEFAULT_RULES` (`src/decision_memory/agents/impact_agent.py`). A rule lists terms; it matches a line in a precedent's own sources (the ones its decision and outcome cite) that contains a word starting with one of them. A hyphen joins words, so "dispute" does not match "invoice-dispute".
@@ -141,7 +153,7 @@ Tab **3 · Impact Analysis** takes the question and the precedents from tab 2 an
 
 ## Scenario simulation (Agent 4)
 
-Tab **4 · Scenario Simulation** compares the proposal's options (+3 / +5 / +7 %, plus the asked rate if it is another one) with two formulas, shown on the tab:
+Tab **4 · Compare options** compares the proposal's options (+3 / +5 / +7 %, plus the asked rate if it is another one) with two formulas, shown on the tab:
 
 ```
 revenue_change = baseline × rate × (1 − exempt_share) − baseline × churn_loss_fraction
@@ -177,7 +189,7 @@ Tab **5 · Recommendation** turns the precedents (tab 2), the impact analysis (t
 
 ## Governance (Agent 6)
 
-Tab **6 · Governance** closes the loop: a human decides on the tab 5 recommendation, the pilot is tracked for 60 days, and its outcome goes back into memory. Everything here is simulated. Approvals, KPI values and outcomes are records typed into the demo. Nothing changes a price, sends a message or opens a ticket.
+Tab **6 · Approve and track** closes the loop: a human decides on the tab 5 recommendation, the pilot is tracked for 60 days, and its outcome goes back into memory. Everything here is simulated. Approvals, KPI values and outcomes are records typed into the demo. Nothing changes a price, sends a message or opens a ticket.
 
 - **Who can do what.** Pricing Director and Restricted Executive can approve, reject and close. The Analyst can record weekly KPIs but cannot approve, reject or close. Role switching is a demo control, not authentication. Every action asks for a (fictional) name for the audit trail.
 - **Approving** needs a recommendation that names a rate (phased pilot or proceed) and its condition met: high-volume contract customers excluded in tab 3. Otherwise the tab says why, and Approve is not offered or stays disabled. For a pilot the approver picks the 2 pilot markets (European markets from visible decisions) and the pilot markets' share of baseline revenue (20% by default, assumed for demo; the same default applies when none is given). Only one pilot per question can be open at a time.
@@ -313,6 +325,7 @@ src/decision_memory/
   ui/recommendation.py      Agent 5 view: advisory card, condition, option verdicts
   ui/governance.py          Agent 6 view: approval, tracker, KPI entry, review, audit trail
   ui/evidence.py            evidence explorer and source detail view
+  ui/view.py                simple view: the switch, plain headings, "Show details" sections
 scripts/seed_demo.py        load the baseline
 scripts/reset_demo.py       wipe and rebuild the baseline
 data/fixtures/              synthetic fixtures (committed)

@@ -60,6 +60,7 @@ INFO = AgentInfo(
     number=3,
     key="impact",
     name="Impact Analysis",
+    tab_name="Who is affected",
     purpose="Scopes a proposal: who and what it touches, with rough cost and effort.",
     reads="The proposal and accessible precedents",
     produces="Affected teams, systems and customer groups; each item source-backed or assumed",

@@ -1,6 +1,7 @@
 # Implementation Plan — Decision Memory MVP
 
 Status: **Stage 15 complete: the release gate passes for a local demo. All 28 acceptance criteria in PRODUCT_SPEC.md §6 and the six CLAUDE.md quality gates were re-verified on 2026-11-17 (docs/RELEASE_SCORECARD.md; 846 passed + 1 skipped without the optional package; with it installed, the skipped test also passes); next steps and the backlog are in docs/HANDOFF.md. Not verified: a timed rehearsal by a person, a narrated backup recording, a run with Wi-Fi off. One live Anthropic call was made after the gate and passed.**
+After the release (2026-11-17): a **Simple view**, on by default, with plain tab names and the supporting detail under "Show details" sections; presentation only (see QA_REPORT.md).
 Each stage is one Claude Code prompt from the build-prompt pack. Implement ONE stage, get its gate green, commit, then stop.
 
 ## Stages

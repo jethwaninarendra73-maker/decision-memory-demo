@@ -87,7 +87,7 @@ def test_next_and_back_open_each_steps_tab(run_app) -> None:
 def test_picking_a_step_opens_its_tab_and_extra_tabs_have_buttons(run_app) -> None:
     app = go_to(run_app(), 3)  # Analyze: tab 3, then tab 4
     assert app.session_state[TAB_KEY] == LABELS[2]
-    assert "(2:15–3:30, in tab 3 · Impact Analysis then tab 4 · Scenario Simulation)" in (
+    assert f"(2:15–3:30, in tab {LABELS[2]} then tab {LABELS[3]})" in (
         guide_text(app).replace("\\", "")
     )
     app = app.button(key="guide_open_scenario").click().run()

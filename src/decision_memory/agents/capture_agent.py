@@ -57,6 +57,7 @@ INFO = AgentInfo(
     number=1,
     key="capture",
     name="Decision Capture",
+    tab_name="Capture a decision",
     purpose="Extracts a decision draft from a synthetic meeting transcript for human review.",
     reads="Synthetic Teams-style transcript (.txt / .md, pasted or fixture)",
     produces="Decision draft with stakeholders, rationale, risks and exact evidence offsets",
