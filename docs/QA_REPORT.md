@@ -106,7 +106,7 @@ $ shasum -a 256 data/demo.db                     # before and after every run ab
 | No outbound calls, emails, tickets, price changes or payments | `test_safety::test_no_code_imports_a_way_out`, `test_no_code_runs_programs_or_imports_by_name` (every code file), network guard on the in-process suite | Pass |
 | Instructions in source documents are text and have no effect | `test_provenance::test_instructions_inside_a_document_change_nothing`; `test_impact_agent::test_instructions_in_a_source_are_quoted_not_followed`; `test_ui_capture::test_pasted_markup_and_instructions_are_displayed_as_plain_text`; `test_e2e::test_a_hostile_document_is_text_everywhere_and_changes_nothing` | Pass |
 | No secrets in the repo; `.env`, `.venv`, `data/*.db` ignored | `test_safety::test_no_secrets_in_tracked_or_new_files`, `test_the_secret_scan_flags_keys_and_allows_fake_env_lines_in_tests`, `test_env_files_databases_and_venv_are_not_tracked`, `test_env_example_holds_placeholders_only` | Pass |
-| Optional Anthropic mode falls back offline on missing key, timeout or validation failure; mocks only | `test_llm_gateway` (mode selection, every failure class), `test_brief` (checks and fallback), `test_ui_brief` (fallback on screen) | Pass with mocks; the live API was never called |
+| Optional Anthropic mode falls back offline on missing key, timeout or validation failure; mocks only | `test_llm_gateway` (mode selection, every failure class), `test_brief` (checks and fallback), `test_ui_brief` (fallback on screen) | Pass with mocks; one live call also passed (Stage 15) |
 
 ## Manual browser checks
 
@@ -124,6 +124,7 @@ Run in the in-app browser against scratch databases (`DM_DB_PATH` under a tempor
 | Stage 15 | The whole demo in the browser against a server with a network guard in its process, fresh data: the guard recorded no outside call, every page request went to `localhost`, each click answered in about 0.2–0.4 s | Pass |
 | Stage 15 | Name and pilot markets filled in on tab 6 before step 1 keep their values through steps 1–5; approval then succeeds (`PRO-001` approved, 4 milestones) | Pass |
 | Stage 15 | Full suite with the optional `anthropic` package (2.9.0) installed: 845 passed, 0 skipped | Pass |
+| Stage 15 | One live call on 2026-11-17 (claude-opus-5-5, the presenter's own key in `.env`): the brief came back in 9 s, passed the checks and was shown with the caption "Reworded by claude-opus-5-5 and checked against the card"; read against the card, it says the same thing | Pass |
 
 The server log had no errors in any of these runs.
 
@@ -173,7 +174,7 @@ Run on 2026-11-17 in the in-app browser, with the app in offline mode (`LLM_MODE
 
 ## Open items and limitations
 
-- **The live Anthropic API was never called.** The optional mode is verified with fake clients only. Its checks catch invented or borrowed numbers and unknown sources, not a misleading paraphrase.
+- **The live Anthropic API was called once (Stage 15), with a brief that passed the checks.** Every other check of the optional mode uses fake clients. The checks catch invented or borrowed numbers and unknown sources, not a misleading paraphrase.
 - **The role selector mismatch** above was seen once and not reproduced.
 - **Role switching is a demo control, not authentication.** The SQLite file and fixtures hold every record in plain text.
 - **Record IDs are sequential,** so a gap can reveal that a hidden record exists (the seeded `DEC-015` already does).

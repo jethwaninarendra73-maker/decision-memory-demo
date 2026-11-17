@@ -72,7 +72,7 @@ The full list is in the README ("Not available yet") and the QA report ("Open it
 - **Role switching is not security.** Anyone can pick any role, and the SQLite file and fixtures hold everything in plain text.
 - **Sequential IDs** can reveal that a hidden record exists (the seeded `DEC-015` gap).
 - **Governance tracks against the plan fixed at approval;** milestone states update only on a KPI entry or close; the open-pilot check compares question text.
-- **The Anthropic mode was never tested against the live API.**
+- **The Anthropic mode was tested against the live API once** (one call, brief accepted); everything else about it is tested with fake clients.
 - **The demo reset is not audited** (the baseline must stay byte-identical) and any role can use it.
 
 ## Backlog
@@ -81,7 +81,7 @@ The full list is in the README ("Not available yet") and the QA report ("Open it
 
 - [ ] Rehearse aloud with a stopwatch, twice, with Wi-Fi off ([DEMO_CHECKLIST.md](DEMO_CHECKLIST.md)). The app's response time is measured and speech is estimated at 2 to 2.5 minutes (see the scorecard); only a person can time the whole thing.
 - [ ] Record a narrated backup run. Until then, [demo_backup/slides.html](demo_backup/slides.html) is the fallback: still frames of one run, each under the synthetic-data label.
-- [ ] Optional: make one live call in Anthropic mode with your own key (put it in `.env`, never in chat): install `requirements-optional.txt`, set `LLM_MODE=anthropic`, and click **Reword with Claude** in tab 5. The suite with the package installed already passes (845, none skipped).
+- [x] One live call in Anthropic mode was made on 2026-11-17 and passed (see the scorecard). Before presenting, set `LLM_MODE=offline` in `.env` again: the script assumes offline mode.
 
 ### Next improvements within the MVP's scope
 

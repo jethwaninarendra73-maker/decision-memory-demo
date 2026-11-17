@@ -336,7 +336,7 @@ docs/                       product spec, implementation plan, QA report, demo s
 
 - **A narrated backup recording** of the demo: record one from your own rehearsal (see the checklist). Until then, [docs/demo_backup/slides.html](docs/demo_backup/slides.html) shows still frames of one complete run, each under the synthetic-data label.
 - The demo script was checked click by click in the running app and its click times were measured, but it was not timed with a person speaking. Rehearse it aloud.
-- The Anthropic mode was tested with fake clients only; no request to the live API was made while building it. Its checks catch invented or borrowed numbers and unknown sources, not a misleading paraphrase that reuses a cited reason's own numbers: read the brief against the card.
+- The Anthropic mode is tested with fake clients, plus one live call made at the release gate (accepted). Its checks catch invented or borrowed numbers and unknown sources, not a misleading paraphrase that reuses a cited reason's own numbers: read the brief against the card.
 - The guide does not check off the Hook, and its live checks describe the app's state, not what the presenter has shown: a decision captured in an earlier run already counts for step 2. Reset the demo data before a rehearsal (sidebar **Demo reset**). Step 6 counts only a pilot for the question on screen.
 - Governance tracks against the plan fixed at approval. Milestone states are recalculated only when someone records a KPI or closes the pilot, so an overdue milestone shows as at risk only after the next entry. Tracker days count from the approval date, not from the proposal's effective quarter.
 - The open-pilot check compares question text, so the same proposal phrased differently can be approved twice.
